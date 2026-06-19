@@ -37,6 +37,7 @@ yarn-error.log*
 # local deployment artifacts
 /.deploy/
 preview-*.png
+/data/
 
 # vercel
 .vercel

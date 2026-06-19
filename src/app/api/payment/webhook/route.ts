@@ -15,6 +15,8 @@ type PaymentPayload = {
   paid?: boolean;
   months?: string | number;
   token?: string;
+  referrer_id?: string;
+  referrerId?: string;
 };
 
 const paidStatuses = new Set(["success", "paid", "trade_success", "payment_success", "1", "true"]);
@@ -41,15 +43,17 @@ export async function POST(request: Request) {
   const orderId = String(payload.out_trade_no ?? payload.order_id ?? payload.trade_no ?? "").trim();
   const amount = Number(payload.amount ?? payload.money ?? 0);
   const months = Number(payload.months ?? 1);
+  const referrerId = String(payload.referrer_id ?? payload.referrerId ?? "").trim();
 
   if (!account || !orderId || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(months) || months <= 0) {
     return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
   }
 
-  const record = await activateVip({ account, orderId, amount, months });
+  const result = await activateVip({ account, orderId, amount, months, referrerId, rewardDays: 3 });
 
   return NextResponse.json({
     ok: true,
-    vip_expires_at: record.vip_expires_at,
+    vip_expires_at: result.record.vip_expires_at,
+    rewarded_referrer: Boolean(result.rewardedReferrer && referrerId),
   });
 }

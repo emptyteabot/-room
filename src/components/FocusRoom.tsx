@@ -1,15 +1,44 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ControlPanel } from "@/components/ControlPanel";
 import { defaultScene, focusScenes } from "@/lib/scenes";
 
 export function FocusRoom() {
   const [sceneId, setSceneId] = useState(defaultScene.id);
+  const [anonymousUserId] = useState(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const storedUserId = window.localStorage.getItem("anonymous_user_id");
+    const nextUserId = storedUserId ?? createAnonymousUserId();
+
+    if (!storedUserId) {
+      window.localStorage.setItem("anonymous_user_id", nextUserId);
+    }
+
+    return nextUserId;
+  });
   const scene = useMemo(
     () => focusScenes.find((item) => item.id === sceneId) ?? defaultScene,
     [sceneId],
   );
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const referrerId = searchParams.get("ref");
+    const storedUserId = window.localStorage.getItem("anonymous_user_id");
+    const nextUserId = storedUserId ?? createAnonymousUserId();
+
+    if (!storedUserId) {
+      window.localStorage.setItem("anonymous_user_id", nextUserId);
+    }
+
+    if (referrerId && referrerId !== nextUserId) {
+      window.localStorage.setItem("referrer_id", referrerId);
+    }
+  }, [anonymousUserId]);
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-black text-white">
@@ -77,10 +106,18 @@ export function FocusRoom() {
                 </span>
               </div>
             </div>
-            <ControlPanel selectedSceneId={scene.id} onSceneChange={setSceneId} />
+            <ControlPanel selectedSceneId={scene.id} onSceneChange={setSceneId} anonymousUserId={anonymousUserId} />
           </div>
         </section>
       </div>
     </main>
   );
+}
+
+function createAnonymousUserId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

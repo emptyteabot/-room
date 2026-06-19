@@ -26,9 +26,10 @@ import { useTimerAudio } from "@/hooks/useTimerAudio";
 type ControlPanelProps = {
   selectedSceneId: string;
   onSceneChange: (sceneId: string) => void;
+  anonymousUserId: string | null;
 };
 
-export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
+export function ControlPanel({ selectedSceneId, onSceneChange, anonymousUserId }: ControlPanelProps) {
   const timer = useTimerAudio();
   const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
   const [shareCopied, setShareCopied] = useState(false);
@@ -54,7 +55,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
 
   const handleShare = () => {
     const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.set("ref", "share");
+    shareUrl.searchParams.set("ref", anonymousUserId ?? "share");
     const link = shareUrl.toString();
 
     if (navigator.clipboard && window.isSecureContext) {

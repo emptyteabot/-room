@@ -24,12 +24,15 @@ export async function activateVip(input: {
   orderId: string;
   amount: number;
   months: number;
+  referrerId?: string;
+  rewardDays?: number;
 }) {
   await acquireLedgerLock();
 
   try {
     const ledger = readLedger();
     const now = new Date();
+    const isNewAccount = !ledger[input.account];
     const currentExpiresAt = ledger[input.account]?.vip_expires_at;
     const baseDate = currentExpiresAt && new Date(currentExpiresAt) > now ? new Date(currentExpiresAt) : new Date(now);
     baseDate.setMonth(baseDate.getMonth() + input.months);
@@ -42,6 +45,21 @@ export async function activateVip(input: {
       updated_at: now.toISOString(),
     };
 
+    const rewardDays = input.rewardDays ?? 0;
+    const referrerId = input.referrerId;
+    const referrer = referrerId ? ledger[referrerId] : undefined;
+
+    if (isNewAccount && referrerId && referrer && referrerId !== input.account && rewardDays > 0) {
+      const referrerBaseDate = new Date(referrer.vip_expires_at) > now ? new Date(referrer.vip_expires_at) : new Date(now);
+      referrerBaseDate.setDate(referrerBaseDate.getDate() + rewardDays);
+
+      ledger[referrerId] = {
+        ...referrer,
+        vip_expires_at: referrerBaseDate.toISOString(),
+        updated_at: now.toISOString(),
+      };
+    }
+
     const ledgerDirectory = path.dirname(ledgerPath);
     const temporaryPath = path.join(ledgerDirectory, `${path.basename(ledgerPath)}.${process.pid}.${Date.now()}.tmp`);
 
@@ -49,7 +67,10 @@ export async function activateVip(input: {
     writeFileSync(temporaryPath, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
     renameSync(temporaryPath, ledgerPath);
 
-    return ledger[input.account];
+    return {
+      record: ledger[input.account],
+      rewardedReferrer: referrerId ? ledger[referrerId] : undefined,
+    };
   } finally {
     rmSync(ledgerLockPath, { force: true });
   }
@@ -63,8 +84,16 @@ async function acquireLedgerLock() {
       const fileDescriptor = openSync(ledgerLockPath, "wx");
       closeSync(fileDescriptor);
       return;
-    } catch {
+    } catch (error) {
+      if (!isFileExistsError(error)) {
+        throw error;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 12));
     }
   }
+}
+
+function isFileExistsError(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST";
 }
