@@ -13,8 +13,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "专注一隅 | 沉浸式自习室",
-  description: "全屏场景、环境声混音与番茄钟计划的沉浸式网页自习室。",
+  metadataBase: new URL("http://43.135.51.214"),
+  title: "专注一隅 Web 网页版 - 零门槛沉浸式线上自习室",
+  description: "无需内测码，全屏 4K 沉浸式场景伴学，内置双路 Lofi 混音与极简番茄钟。",
+  keywords: ["专注一隅", "线上自习室", "Study With Me", "番茄钟网页版"],
+  alternates: {
+    canonical: "/focus-room",
+  },
+  openGraph: {
+    title: "专注一隅 Web 网页版 - 零门槛沉浸式线上自习室",
+    description: "无需内测码，全屏 4K 沉浸式场景伴学，内置双路 Lofi 混音与极简番茄钟。",
+    url: "/focus-room",
+    siteName: "专注一隅",
+    locale: "zh_CN",
+    type: "website",
+    images: [
+      {
+        url: "https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1200&h=630&q=85",
+        width: 1200,
+        height: 630,
+        alt: "专注一隅 Web 沉浸式线上自习室",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "专注一隅 Web 网页版 - 零门槛沉浸式线上自习室",
+    description: "无需内测码，全屏 4K 沉浸式场景伴学，内置双路 Lofi 混音与极简番茄钟。",
+    images: ["https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1200&h=630&q=85"],
+  },
 };
 
 export default function RootLayout({

@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import {
   Crown,
   Headphones,
   Pause,
   Play,
   RotateCcw,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   TimerReset,
@@ -29,6 +31,48 @@ type ControlPanelProps = {
 export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
   const timer = useTimerAudio();
   const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareTimerRef.current) {
+        window.clearTimeout(shareTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showShareToast = () => {
+    setShareCopied(true);
+
+    if (shareTimerRef.current) {
+      window.clearTimeout(shareTimerRef.current);
+    }
+
+    shareTimerRef.current = window.setTimeout(() => setShareCopied(false), 1800);
+  };
+
+  const handleShare = () => {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("ref", "share");
+    const link = shareUrl.toString();
+
+    if (navigator.clipboard && window.isSecureContext) {
+      void navigator.clipboard.writeText(link).then(showShareToast);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = link;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    showShareToast();
+  };
 
   return (
     <div className="max-h-[calc(100dvh-7rem)] w-full overflow-y-auto rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-black/35 backdrop-blur-xl lg:ml-auto lg:max-w-4xl">
@@ -179,6 +223,20 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
                 解锁
               </button>
             </div>
+          </div>
+          <div className="relative mt-3">
+            <button
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/78 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/10"
+              onClick={handleShare}
+            >
+              <Share2 className="size-4" />
+              分享免单 · 获取高级场景
+            </button>
+            {shareCopied ? (
+              <div className="absolute bottom-13 left-1/2 w-max -translate-x-1/2 rounded-full border border-white/12 bg-black/38 px-4 py-2 text-xs text-white/82 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                链接已复制，分享给好友一同专注
+              </div>
+            ) : null}
           </div>
         </section>
       </div>
