@@ -26,10 +26,9 @@ import { useTimerAudio } from "@/hooks/useTimerAudio";
 type ControlPanelProps = {
   selectedSceneId: string;
   onSceneChange: (sceneId: string) => void;
-  anonymousUserId: string | null;
 };
 
-export function ControlPanel({ selectedSceneId, onSceneChange, anonymousUserId }: ControlPanelProps) {
+export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
   const timer = useTimerAudio();
   const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
   const [shareCopied, setShareCopied] = useState(false);
@@ -55,7 +54,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange, anonymousUserId }
 
   const handleShare = () => {
     const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.set("ref", anonymousUserId ?? "share");
+    shareUrl.searchParams.set("ref", getAnonymousUserId());
     const link = shareUrl.toString();
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -70,7 +69,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange, anonymousUserId }
     textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand("copy");
+    tryCopySelection();
     textarea.remove();
     showShareToast();
   };
@@ -243,6 +242,36 @@ export function ControlPanel({ selectedSceneId, onSceneChange, anonymousUserId }
       </div>
     </div>
   );
+}
+
+function getAnonymousUserId() {
+  const storedUserId = window.localStorage.getItem("anonymous_user_id");
+
+  if (storedUserId) {
+    return storedUserId;
+  }
+
+  const nextUserId = createAnonymousUserId();
+  window.localStorage.setItem("anonymous_user_id", nextUserId);
+  return nextUserId;
+}
+
+function createAnonymousUserId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function tryCopySelection() {
+  try {
+    document.execCommand("copy");
+  } catch {
+    return false;
+  }
+
+  return true;
 }
 
 type AudioSelectProps = {

@@ -6,20 +6,6 @@ import { defaultScene, focusScenes } from "@/lib/scenes";
 
 export function FocusRoom() {
   const [sceneId, setSceneId] = useState(defaultScene.id);
-  const [anonymousUserId] = useState(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const storedUserId = window.localStorage.getItem("anonymous_user_id");
-    const nextUserId = storedUserId ?? createAnonymousUserId();
-
-    if (!storedUserId) {
-      window.localStorage.setItem("anonymous_user_id", nextUserId);
-    }
-
-    return nextUserId;
-  });
   const scene = useMemo(
     () => focusScenes.find((item) => item.id === sceneId) ?? defaultScene,
     [sceneId],
@@ -38,7 +24,7 @@ export function FocusRoom() {
     if (referrerId && referrerId !== nextUserId) {
       window.localStorage.setItem("referrer_id", referrerId);
     }
-  }, [anonymousUserId]);
+  }, []);
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-black text-white">
@@ -106,7 +92,7 @@ export function FocusRoom() {
                 </span>
               </div>
             </div>
-            <ControlPanel selectedSceneId={scene.id} onSceneChange={setSceneId} anonymousUserId={anonymousUserId} />
+            <ControlPanel selectedSceneId={scene.id} onSceneChange={setSceneId} />
           </div>
         </section>
       </div>
