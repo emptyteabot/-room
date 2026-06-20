@@ -1,21 +1,26 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
+  ChevronDown,
   Crown,
-  Download,
+  Expand,
   Headphones,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   RotateCcw,
   Share2,
+  SkipForward,
   SlidersHorizontal,
   Sparkles,
   TimerReset,
+  Users,
   Volume2,
   Waves,
+  X,
 } from "lucide-react";
 import {
   ambienceTracks,
@@ -23,22 +28,14 @@ import {
   focusScenes,
   musicTracks,
 } from "@/lib/scenes";
-import { useTimerAudio } from "@/hooks/useTimerAudio";
+import type { useTimerAudio } from "@/hooks/useTimerAudio";
 
-type ControlPanelProps = {
-  selectedSceneId: string;
-  onSceneChange: (sceneId: string) => void;
-};
+type TimerAudioController = ReturnType<typeof useTimerAudio>;
 
 type UserStatus = {
   vip_expires_at: string | null;
   referred_success_count: number;
   stats: UserStats | null;
-};
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
 type UserStats = {
@@ -50,194 +47,124 @@ type UserStats = {
   synced_at: string;
 };
 
-export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
-  const timer = useTimerAudio();
-  const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
-  const [shareCopied, setShareCopied] = useState(false);
-  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const shareTimerRef = useRef<number | null>(null);
-  const syncedSessionsRef = useRef(0);
+type BuddyStatus = {
+  online_count: number;
+  same_scene_count: number;
+  focusing_count: number;
+};
 
-  useEffect(() => {
-    return () => {
-      if (shareTimerRef.current) {
-        window.clearTimeout(shareTimerRef.current);
-      }
-    };
-  }, []);
+type ControlPanelProps = {
+  mode: "drawer" | "dock";
+  open?: boolean;
+  selectedSceneId: string;
+  immersive: boolean;
+  fullscreen: boolean;
+  timer: TimerAudioController;
+  userStatus: UserStatus | null;
+  buddyStatus: BuddyStatus | null;
+  shareCopied: boolean;
+  onClose?: () => void;
+  onSceneChange: (sceneId: string) => void;
+  onShare: () => void;
+  onToggleImmersive: () => void;
+  onToggleFullscreen: () => void;
+};
 
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadUserStatus = async () => {
-      const anonymousUserId = getAnonymousUserId();
-      const response = await fetch(`/focus-room/api/user/status?anonymous_user_id=${encodeURIComponent(anonymousUserId)}`, {
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const payload = (await response.json()) as UserStatus & { ok: boolean };
-
-      if (active && payload.ok) {
-        setUserStatus({
-          vip_expires_at: payload.vip_expires_at,
-          referred_success_count: payload.referred_success_count,
-          stats: payload.stats,
-        });
-      }
-    };
-
-    void loadUserStatus();
-    const intervalId = window.setInterval(() => void loadUserStatus(), 45000);
-
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (timer.completedSessions <= 0 || timer.completedSessions === syncedSessionsRef.current) {
-      return;
-    }
-
-    syncedSessionsRef.current = timer.completedSessions;
-    void syncUserStats({
-      stats_date: timer.statsDate,
-      today_focus_seconds: timer.todayFocusSeconds,
-      completed_sessions: timer.completedSessions,
-      total_focus_seconds: timer.totalFocusSeconds,
-      current_task: timer.currentTask,
-    }).then((nextStatus) => {
-      if (nextStatus) {
-        setUserStatus(nextStatus);
-      }
-    });
-  }, [
-    timer.completedSessions,
-    timer.currentTask,
-    timer.statsDate,
-    timer.todayFocusSeconds,
-    timer.totalFocusSeconds,
-  ]);
-
-  const showShareToast = () => {
-    setShareCopied(true);
-
-    if (shareTimerRef.current) {
-      window.clearTimeout(shareTimerRef.current);
-    }
-
-    shareTimerRef.current = window.setTimeout(() => setShareCopied(false), 1800);
-  };
-
-  const handleShare = () => {
-    const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.set("ref", getAnonymousUserId());
-    const link = shareUrl.toString();
-
-    if (navigator.clipboard && window.isSecureContext) {
-      void navigator.clipboard.writeText(link).then(showShareToast);
-      return;
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = link;
-    textarea.setAttribute("readonly", "");
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-    tryCopySelection();
-    textarea.remove();
-    showShareToast();
-  };
-
-  const handleInstall = async () => {
-    if (!installPrompt) {
-      return;
-    }
-
-    await installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
-  };
+export function ControlPanel({
+  mode,
+  open = true,
+  selectedSceneId,
+  immersive,
+  fullscreen,
+  timer,
+  userStatus,
+  buddyStatus,
+  shareCopied,
+  onClose,
+  onSceneChange,
+  onShare,
+  onToggleImmersive,
+  onToggleFullscreen,
+}: ControlPanelProps) {
+  if (mode === "dock") {
+    return (
+      <BottomDock
+        timer={timer}
+        buddyStatus={buddyStatus}
+        immersive={immersive}
+        fullscreen={fullscreen}
+        onToggleImmersive={onToggleImmersive}
+        onToggleFullscreen={onToggleFullscreen}
+      />
+    );
+  }
 
   return (
-    <div className="max-h-[calc(100dvh-7rem)] w-full overflow-y-auto rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-black/35 backdrop-blur-xl lg:ml-auto lg:max-w-4xl">
-      <div className="grid gap-px bg-white/8 lg:grid-cols-[1.12fr_0.88fr]">
-        <section id="scenes" className="bg-black/24 p-4 sm:p-5">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[0.68rem] font-semibold tracking-[0.36em] text-white/40">STEP 01</p>
-              <h3 className="mt-2 text-xl font-semibold text-white">选择你的学习场景</h3>
-            </div>
-            <Sparkles className="mt-1 size-5 text-white/46" />
+    <aside
+      className={`fixed right-0 top-0 z-30 h-dvh w-full max-w-[34rem] border-l border-white/12 bg-black/28 shadow-2xl shadow-black/50 backdrop-blur-2xl transition duration-300 sm:right-4 sm:top-4 sm:h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border ${
+        open ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+      }`}
+    >
+      <div className="flex h-full flex-col">
+        <div className="flex h-17 items-center justify-between border-b border-white/10 px-5">
+          <div>
+            <p className="text-[0.64rem] font-semibold tracking-[0.36em] text-white/42">STUDY CONTROL</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">沉浸设置</h2>
           </div>
-          <div className="grid max-h-[20rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
-            {focusScenes.map((scene) => {
-              const Icon = scene.icon;
-              const active = scene.id === selectedSceneId;
+          <button
+            className="grid size-10 place-items-center rounded-full border border-white/12 bg-white/8 text-white/72 transition hover:border-white/28 hover:bg-white/14 hover:text-white"
+            onClick={onClose}
+            aria-label="关闭设置"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <section id="scenes">
+            <SectionTitle eyebrow="STEP 01" title="选择你的学习场景" icon={<Sparkles className="size-5" />} />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {focusScenes.map((scene) => {
+                const Icon = scene.icon;
+                const active = scene.id === selectedSceneId;
 
-              return (
-                <button
-                  key={scene.id}
-                  className={`group relative min-h-32 overflow-hidden rounded-xl border p-4 text-left transition ${
-                    active
-                      ? "border-white/42 bg-white/14 shadow-lg shadow-black/30"
-                      : "border-white/12 bg-white/6 hover:border-white/28 hover:bg-white/10"
-                  }`}
-                  onClick={() => onSceneChange(scene.id)}
-                >
-                  <Image
-                    className="absolute inset-0 h-full w-full object-cover opacity-50 transition duration-500 group-hover:scale-105 group-hover:opacity-62"
-                    src={scene.posterUrl}
-                    alt=""
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
-                  />
-                  <span className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-black/8" />
-                  <span className="relative flex h-full min-h-24 flex-col justify-end">
-                    <span className="mb-5 flex items-center justify-between">
-                      <Icon className="size-5 text-white/78" />
-                      <span className="text-[0.6rem] font-semibold tracking-[0.26em] text-white/45">{scene.tone}</span>
+                return (
+                  <button
+                    key={scene.id}
+                    className={`group relative min-h-38 overflow-hidden rounded-2xl border p-4 text-left transition ${
+                      active
+                        ? "border-white/42 bg-white/14 shadow-lg shadow-black/30"
+                        : "border-white/12 bg-white/6 hover:border-white/28 hover:bg-white/10"
+                    }`}
+                    onClick={() => onSceneChange(scene.id)}
+                  >
+                    <Image
+                      className="absolute inset-0 h-full w-full object-cover opacity-58 transition duration-500 group-hover:scale-105 group-hover:opacity-72"
+                      src={scene.posterUrl}
+                      alt=""
+                      fill
+                      unoptimized
+                      sizes="(max-width: 640px) 50vw, 260px"
+                    />
+                    <span className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-black/8" />
+                    <span className="relative flex h-full min-h-30 flex-col justify-end">
+                      <span className="mb-6 flex items-center justify-between">
+                        <Icon className="size-5 text-white/82" />
+                        <span className="text-[0.58rem] font-semibold tracking-[0.28em] text-white/46">{scene.tone}</span>
+                      </span>
+                      <span className="flex items-center gap-2 text-lg font-semibold text-white">
+                        {scene.title}
+                        {scene.premium ? <Crown className="size-4 text-amber-200" /> : null}
+                      </span>
+                      <span className="mt-1 text-xs text-white/58">{scene.subtitle}</span>
                     </span>
-                    <span className="flex items-center gap-2 text-lg font-semibold text-white">
-                      {scene.title}
-                      {scene.premium ? <Crown className="size-4 text-amber-200" /> : null}
-                    </span>
-                    <span className="mt-1 text-xs text-white/56">{scene.subtitle}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-        <section className="bg-black/28 p-4 sm:p-5">
-          <div id="audio" className="rounded-xl border border-white/10 bg-white/6 p-3.5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[0.68rem] font-semibold tracking-[0.36em] text-white/40">STEP 02</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">设置声音氛围</h3>
-              </div>
-              <SlidersHorizontal className="mt-1 size-5 text-white/46" />
+                  </button>
+                );
+              })}
             </div>
-            <div className="space-y-3">
+          </section>
+          <section id="audio" className="mt-6">
+            <SectionTitle eyebrow="STEP 02" title="设置声音氛围" icon={<SlidersHorizontal className="size-5" />} />
+            <div className="mt-4 space-y-3">
               <AudioSelect
                 icon={<Headphones className="size-4" />}
                 label="音乐"
@@ -265,137 +192,173 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
                 onChange={timer.setAmbienceVolume}
               />
             </div>
-          </div>
-          <div id="timer" className="mt-3 rounded-xl border border-white/10 bg-white/6 p-3.5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[0.68rem] font-semibold tracking-[0.36em] text-white/40">STEP 03</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">设置番茄钟</h3>
-              </div>
-              <TimerReset className="mt-1 size-5 text-white/46" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+          </section>
+          <section id="timer" className="mt-6">
+            <SectionTitle eyebrow="STEP 03" title="设置番茄钟" icon={<TimerReset className="size-5" />} />
+            <div className="mt-4 grid grid-cols-4 gap-2">
               {focusDurations.map((duration) => (
                 <button
                   key={duration}
-                  className={`h-10 rounded-full border text-sm transition ${
+                  className={`h-11 rounded-full border text-sm transition ${
                     timer.selectedMinutes === duration
-                      ? "border-white/38 bg-white/16 text-white"
-                      : "border-white/12 bg-black/14 text-white/64 hover:border-white/28 hover:text-white"
+                      ? "border-white/38 bg-white/18 text-white"
+                      : "border-white/12 bg-black/18 text-white/64 hover:border-white/28 hover:text-white"
                   }`}
                   onClick={() => timer.setDuration(duration)}
                 >
-                  {duration} 分钟
+                  {duration}
                 </button>
               ))}
             </div>
-            <label className="mt-3 block">
+            <label className="mt-4 block">
               <span className="mb-2 flex items-center gap-2 text-xs font-medium text-white/62">
                 <BarChart3 className="size-4" />
-                当前任务
+                本轮目标
               </span>
               <input
-                className="h-10 w-full rounded-lg border border-white/10 bg-black/34 px-3 text-sm text-white outline-none transition placeholder:text-white/30 hover:border-white/22 focus:border-white/36"
+                className="h-12 w-full rounded-2xl border border-white/12 bg-black/30 px-4 text-sm text-white outline-none transition placeholder:text-white/32 hover:border-white/24 focus:border-white/38"
                 value={timer.currentTask}
                 onChange={(event) => timer.setCurrentTask(event.target.value)}
-                placeholder="写下这一轮要完成的事"
+                placeholder="写下今天想完成的事"
                 maxLength={42}
               />
             </label>
-            <div className="mt-4 rounded-xl border border-white/10 bg-black/24 p-3.5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[0.64rem] font-semibold tracking-[0.32em] text-white/38">POMODORO #1</p>
-                  <p className="mt-1 text-4xl font-semibold tabular-nums text-white">{timer.formattedTime}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="grid size-11 place-items-center rounded-full border border-white/14 bg-white/10 text-white transition hover:border-white/30 hover:bg-white/16"
-                    onClick={timer.toggle}
-                    aria-label={timer.isRunning ? "暂停" : "开始"}
-                  >
-                    {timer.isRunning ? <Pause className="size-5" /> : <Play className="size-5 fill-white" />}
-                  </button>
-                  <button
-                    className="grid size-11 place-items-center rounded-full border border-white/14 bg-white/10 text-white transition hover:border-white/30 hover:bg-white/16"
-                    onClick={timer.reset}
-                    aria-label="重置"
-                  >
-                    <RotateCcw className="size-5" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/12">
-                <div className="h-full rounded-full bg-white/78 transition-all" style={{ width: `${progress * 100}%` }} />
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <Metric label="今日" value={`${Math.floor(timer.todayFocusSeconds / 60)}m`} />
-              <Metric label="轮次" value={String(timer.completedSessions)} />
-              <Metric label="累计" value={`${Math.floor(timer.totalFocusSeconds / 60)}m`} />
-            </div>
-          </div>
-          <div id="pro" className="mt-3 rounded-xl border border-amber-200/16 bg-amber-200/8 p-3.5">
+          </section>
+          <section className="mt-6 rounded-2xl border border-white/12 bg-white/7 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-white">Pro 场景包</p>
-                <p className="mt-1 text-xs leading-5 text-white/54">雪山书房、海边书房、长时段白噪与自定义计划。</p>
+                <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Users className="size-4 text-emerald-200" />
+                  同频自习搭子
+                </p>
+                <p className="mt-1 text-xs leading-5 text-white/54">
+                  {buddyStatus?.online_count ?? 1} 人在线 · {buddyStatus?.same_scene_count ?? 1} 人同场景 ·{" "}
+                  {buddyStatus?.focusing_count ?? (timer.isRunning ? 1 : 0)} 人专注中
+                </p>
               </div>
-              <button className="rounded-full border border-amber-200/24 bg-amber-100/14 px-4 py-2 text-sm font-medium text-amber-50 transition hover:bg-amber-100/22">
-                解锁
-              </button>
+              <span className="rounded-full border border-emerald-200/18 bg-emerald-200/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                LIVE
+              </span>
             </div>
-          </div>
-          <div className="relative mt-3">
-            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-center text-xs font-medium text-white/64 backdrop-blur-xl">
+          </section>
+          <section className="relative mt-3">
+            <div className="mb-2 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-center text-xs font-medium text-white/64 backdrop-blur-xl">
               已邀请 {userStatus?.referred_success_count ?? 0} 位学友 · VIP 剩余 {formatVipRemainingDays(userStatus?.vip_expires_at)} 天
             </div>
             <button
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/78 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/10"
-              onClick={handleShare}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/7 text-sm font-medium text-white/82 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/12"
+              onClick={onShare}
             >
               <Share2 className="size-4" />
-              分享免单 · 获取高级场景
+              分享给同学一起专注
             </button>
             {shareCopied ? (
-              <div className="absolute bottom-13 left-1/2 w-max -translate-x-1/2 rounded-full border border-white/12 bg-black/38 px-4 py-2 text-xs text-white/82 shadow-2xl shadow-black/30 backdrop-blur-xl">
+              <div className="absolute bottom-14 left-1/2 w-max -translate-x-1/2 rounded-full border border-white/12 bg-black/48 px-4 py-2 text-xs text-white/84 shadow-2xl shadow-black/30 backdrop-blur-xl">
                 链接已复制，分享给好友一同专注
               </div>
             ) : null}
+          </section>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function BottomDock({
+  timer,
+  buddyStatus,
+  immersive,
+  fullscreen,
+  onToggleImmersive,
+  onToggleFullscreen,
+}: {
+  timer: TimerAudioController;
+  buddyStatus: BuddyStatus | null;
+  immersive: boolean;
+  fullscreen: boolean;
+  onToggleImmersive: () => void;
+  onToggleFullscreen: () => void;
+}) {
+  const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
+
+  return (
+    <div className="fixed inset-x-3 bottom-3 z-20 sm:inset-x-8 sm:bottom-6 lg:inset-x-1/2 lg:w-[58rem] lg:-translate-x-1/2">
+      <div className="rounded-3xl border border-white/14 bg-black/28 p-3 shadow-2xl shadow-black/45 backdrop-blur-2xl">
+        <div className="grid gap-3 lg:grid-cols-[14rem_1fr_auto] lg:items-center">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/6 px-4 py-3">
+            <div>
+              <p className="text-[0.62rem] font-semibold tracking-[0.28em] text-white/38">POMODORO #1</p>
+              <p className="mt-1 text-4xl font-semibold tabular-nums text-white">{timer.formattedTime}</p>
+            </div>
+            <span className="flex items-center gap-1.5 rounded-full border border-emerald-200/18 bg-emerald-200/10 px-2.5 py-1 text-xs text-emerald-100">
+              <span className="size-1.5 rounded-full bg-emerald-200" />
+              {timer.isRunning ? "学习中" : "待开始"}
+            </span>
           </div>
-          {installPrompt ? (
-            <button
-              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 text-sm font-medium text-white/64 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/8 hover:text-white/86"
-              onClick={handleInstall}
-            >
-              <Download className="size-4" />
-              安装到桌面
-            </button>
-          ) : null}
-        </section>
+          <div className="min-w-0">
+            <input
+              className="h-11 w-full rounded-2xl border border-white/12 bg-white/7 px-4 text-sm text-white outline-none transition placeholder:text-white/34 hover:border-white/24 focus:border-white/38"
+              value={timer.currentTask}
+              onChange={(event) => timer.setCurrentTask(event.target.value)}
+              placeholder="写下今天想完成的事"
+              maxLength={42}
+            />
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/12">
+              <div className="h-full rounded-full bg-white/82 transition-all" style={{ width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/46">
+              <span>今日 {Math.floor(timer.todayFocusSeconds / 60)}m</span>
+              <span>轮次 {timer.completedSessions}</span>
+              <span>在线 {buddyStatus?.online_count ?? 1}</span>
+              <span>同频 {buddyStatus?.focusing_count ?? (timer.isRunning ? 1 : 0)}</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <IconButton onClick={timer.toggle} label={timer.isRunning ? "暂停" : "开始"}>
+              {timer.isRunning ? <Pause className="size-5" /> : <Play className="size-5 fill-white" />}
+            </IconButton>
+            <IconButton onClick={timer.reset} label="重置">
+              <RotateCcw className="size-5" />
+            </IconButton>
+            <IconButton onClick={() => timer.setDuration(timer.selectedMinutes)} label="跳过">
+              <SkipForward className="size-5" />
+            </IconButton>
+            <IconButton onClick={onToggleFullscreen} label={fullscreen ? "退出全屏" : "全屏"}>
+              {fullscreen ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+            </IconButton>
+            <IconButton onClick={onToggleImmersive} label={immersive ? "显示面板" : "沉浸模式"}>
+              {immersive ? <ChevronDown className="size-5" /> : <Expand className="size-5" />}
+            </IconButton>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function getAnonymousUserId() {
-  const storedUserId = window.localStorage.getItem("anonymous_user_id");
-
-  if (storedUserId) {
-    return storedUserId;
-  }
-
-  const nextUserId = createAnonymousUserId();
-  window.localStorage.setItem("anonymous_user_id", nextUserId);
-  return nextUserId;
+function SectionTitle({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-[0.68rem] font-semibold tracking-[0.36em] text-white/40">{eyebrow}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{title}</h3>
+      </div>
+      <span className="mt-1 text-white/46">{icon}</span>
+    </div>
+  );
 }
 
-function createAnonymousUserId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      className="grid size-11 place-items-center rounded-full border border-white/14 bg-white/10 text-white transition hover:border-white/30 hover:bg-white/16"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  );
 }
 
 function formatVipRemainingDays(expiresAt?: string | null) {
@@ -412,45 +375,6 @@ function formatVipRemainingDays(expiresAt?: string | null) {
   return Math.ceil(remainingMs / 86400000);
 }
 
-async function syncUserStats(stats: Omit<UserStats, "synced_at">) {
-  const response = await fetch("/focus-room/api/user/status", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      anonymous_user_id: getAnonymousUserId(),
-      stats,
-    }),
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const payload = (await response.json()) as UserStatus & { ok: boolean };
-
-  if (!payload.ok) {
-    return null;
-  }
-
-  return {
-    vip_expires_at: payload.vip_expires_at,
-    referred_success_count: payload.referred_success_count,
-    stats: payload.stats,
-  };
-}
-
-function tryCopySelection() {
-  try {
-    document.execCommand("copy");
-  } catch {
-    return false;
-  }
-
-  return true;
-}
-
 type AudioSelectProps = {
   icon: React.ReactNode;
   label: string;
@@ -459,29 +383,15 @@ type AudioSelectProps = {
   onChange: (value: string) => void;
 };
 
-type MetricProps = {
-  label: string;
-  value: string;
-};
-
-function Metric({ label, value }: MetricProps) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
-      <p className="text-[0.62rem] font-semibold tracking-[0.22em] text-white/34">{label}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums text-white/74">{value}</p>
-    </div>
-  );
-}
-
 function AudioSelect({ icon, label, value, options, onChange }: AudioSelectProps) {
   return (
-    <label className="block">
-      <span className="mb-2 flex items-center gap-2 text-xs font-medium text-white/62">
+    <label className="block rounded-2xl border border-white/10 bg-white/6 p-4">
+      <span className="mb-3 flex items-center gap-2 text-sm font-semibold text-white/78">
         {icon}
         {label}
       </span>
       <select
-        className="h-10 w-full rounded-lg border border-white/10 bg-black/34 px-3 text-sm text-white outline-none transition hover:border-white/22 focus:border-white/36"
+        className="h-11 w-full rounded-xl border border-white/10 bg-black/34 px-3 text-sm text-white outline-none transition hover:border-white/22 focus:border-white/36"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -504,8 +414,8 @@ type VolumeControlProps = {
 
 function VolumeControl({ icon, label, value, onChange }: VolumeControlProps) {
   return (
-    <label className="block">
-      <span className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-white/62">
+    <label className="block rounded-2xl border border-white/10 bg-white/6 p-4">
+      <span className="mb-3 flex items-center justify-between gap-3 text-sm font-semibold text-white/78">
         <span className="flex items-center gap-2">
           {icon}
           {label}
