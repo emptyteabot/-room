@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,27 @@ export const metadata: Metadata = {
   title: "专注一隅 Web 网页版 - 零门槛沉浸式线上自习室",
   description: "无需内测码，全屏 4K 沉浸式场景伴学，内置双路 Lofi 混音与极简番茄钟。",
   keywords: ["专注一隅", "线上自习室", "Study With Me", "番茄钟网页版"],
+  applicationName: "专注一隅",
+  manifest: "/focus-room/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "专注一隅",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      {
+        url: "/focus-room/icon.svg",
+        type: "image/svg+xml",
+      },
+    ],
+    apple: [
+      {
+        url: "/focus-room/icon.svg",
+        type: "image/svg+xml",
+      },
+    ],
+  },
   alternates: {
     canonical: "/focus-room",
   },
@@ -51,7 +73,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full overflow-x-hidden bg-black">{children}</body>
+      <body className="min-h-full overflow-x-hidden bg-black">
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

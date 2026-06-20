@@ -1,0 +1,19 @@
+{
+  "name": "专注一隅 Web 网页版",
+  "short_name": "专注一隅",
+  "description": "零门槛沉浸式线上自习室，内置双路 Lofi 混音与极简番茄钟。",
+  "start_url": "/focus-room",
+  "scope": "/focus-room/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/focus-room/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

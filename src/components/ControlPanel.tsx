@@ -3,7 +3,9 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
+  BarChart3,
   Crown,
+  Download,
   Headphones,
   Pause,
   Play,
@@ -33,11 +35,17 @@ type UserStatus = {
   referred_success_count: number;
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
   const timer = useTimerAudio();
   const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
   const [shareCopied, setShareCopied] = useState(false);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const shareTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -46,6 +54,17 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
         window.clearTimeout(shareTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
   useEffect(() => {
@@ -112,6 +131,16 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
     showShareToast();
   };
 
+  const handleInstall = async () => {
+    if (!installPrompt) {
+      return;
+    }
+
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
+
   return (
     <div className="max-h-[calc(100dvh-7rem)] w-full overflow-y-auto rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-black/35 backdrop-blur-xl lg:ml-auto lg:max-w-4xl">
       <div className="grid gap-px bg-white/8 lg:grid-cols-[1.12fr_0.88fr]">
@@ -146,7 +175,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
                   />
                   <span className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-black/8" />
-                    <span className="relative flex h-full min-h-24 flex-col justify-end">
+                  <span className="relative flex h-full min-h-24 flex-col justify-end">
                     <span className="mb-5 flex items-center justify-between">
                       <Icon className="size-5 text-white/78" />
                       <span className="text-[0.6rem] font-semibold tracking-[0.26em] text-white/45">{scene.tone}</span>
@@ -223,6 +252,19 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
                 </button>
               ))}
             </div>
+            <label className="mt-3 block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-medium text-white/62">
+                <BarChart3 className="size-4" />
+                当前任务
+              </span>
+              <input
+                className="h-10 w-full rounded-lg border border-white/10 bg-black/34 px-3 text-sm text-white outline-none transition placeholder:text-white/30 hover:border-white/22 focus:border-white/36"
+                value={timer.currentTask}
+                onChange={(event) => timer.setCurrentTask(event.target.value)}
+                placeholder="写下这一轮要完成的事"
+                maxLength={42}
+              />
+            </label>
             <div className="mt-4 rounded-xl border border-white/10 bg-black/24 p-3.5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -249,6 +291,11 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
               <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/12">
                 <div className="h-full rounded-full bg-white/78 transition-all" style={{ width: `${progress * 100}%` }} />
               </div>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <Metric label="今日" value={`${Math.floor(timer.todayFocusSeconds / 60)}m`} />
+              <Metric label="轮次" value={String(timer.completedSessions)} />
+              <Metric label="累计" value={`${Math.floor(timer.totalFocusSeconds / 60)}m`} />
             </div>
           </div>
           <div id="pro" className="mt-3 rounded-xl border border-amber-200/16 bg-amber-200/8 p-3.5">
@@ -279,6 +326,15 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
               </div>
             ) : null}
           </div>
+          {installPrompt ? (
+            <button
+              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/20 text-sm font-medium text-white/64 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/8 hover:text-white/86"
+              onClick={handleInstall}
+            >
+              <Download className="size-4" />
+              安装到桌面
+            </button>
+          ) : null}
         </section>
       </div>
     </div>
@@ -336,6 +392,20 @@ type AudioSelectProps = {
   options: { title: string; subtitle: string; url: string }[];
   onChange: (value: string) => void;
 };
+
+type MetricProps = {
+  label: string;
+  value: string;
+};
+
+function Metric({ label, value }: MetricProps) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+      <p className="text-[0.62rem] font-semibold tracking-[0.22em] text-white/34">{label}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-white/74">{value}</p>
+    </div>
+  );
+}
 
 function AudioSelect({ icon, label, value, options, onChange }: AudioSelectProps) {
   return (
