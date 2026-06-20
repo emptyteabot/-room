@@ -1,4 +1,4 @@
-const origin = "http://43.135.51.214/focus-room";
+const origin = "http://43-135-51-214.sslip.io/focus-room";
 const blockedUserAgentPattern = /(MicroMessenger|QQ\/|QQBrowser|MQQBrowser|XiaoHongShu|XHS|BytedanceWebview|Aweme|Toutiao|BiliApp|Weibo)/i;
 
 const worker = {
@@ -16,7 +16,21 @@ const worker = {
 
     const targetUrl = createTargetUrl(request.url);
 
-    const proxyRequest = new Request(targetUrl, request);
+    const proxyHeaders = new Headers(request.headers);
+    proxyHeaders.set("host", "43-135-51-214.sslip.io");
+    proxyHeaders.delete("cf-connecting-ip");
+    proxyHeaders.delete("cf-ipcountry");
+    proxyHeaders.delete("cf-ray");
+    proxyHeaders.delete("cf-visitor");
+    proxyHeaders.delete("x-forwarded-proto");
+    proxyHeaders.delete("x-real-ip");
+
+    const proxyRequest = new Request(targetUrl, {
+      method: request.method,
+      headers: proxyHeaders,
+      body: request.body,
+      redirect: "manual",
+    });
     const response = await fetch(proxyRequest);
     const headers = new Headers(response.headers);
     const location = headers.get("location");
