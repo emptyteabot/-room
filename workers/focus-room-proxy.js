@@ -44,6 +44,12 @@ function createTargetUrl(url) {
   const originPath = originUrl.pathname.replace(/\/$/, "");
 
   if (requestUrl.pathname === "/") {
+    targetUrl.pathname = `${originPath}/landing`;
+    targetUrl.search = requestUrl.search;
+    return targetUrl;
+  }
+
+  if (requestUrl.pathname === "/room" || requestUrl.pathname === "/app") {
     targetUrl.pathname = originPath;
     targetUrl.search = requestUrl.search;
     return targetUrl;
