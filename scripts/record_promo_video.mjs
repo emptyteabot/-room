@@ -6,12 +6,12 @@ import ffmpegPath from "ffmpeg-static";
 
 const format = process.env.PROMO_FORMAT === "landscape" ? "landscape" : "vertical";
 const siteUrl = process.env.PROMO_SITE_URL ?? "http://127.0.0.1:3000/focus-room";
-const cinematicSceneIds = ["snow-study", "window-reading", "cafe-notes", "library-aisle", "rain-window", "mountain-clouds", "snow-study"];
+const showcaseSceneIds = ["snow-lake", "alpine-clouds", "rocky-creek", "deep-forest", "ocean-sunset", "shore-waves", "starfield", "snow-lake"];
 const profile = format === "landscape"
   ? {
       width: 1920,
       height: 1080,
-      outputName: "innook-product-demo-landscape.mp4",
+      outputName: "innook-product-demo-product-showcase.mp4",
       outputDir: "marketing/promo-video-landscape",
       screenshotsDir: "marketing/promo-frames-landscape",
     }
@@ -112,7 +112,7 @@ async function recordVertical(page) {
   await openDrawer(page);
   await page.waitForTimeout(1700);
   await screenshot(page, "02-control-drawer");
-  await chooseScene(page, "雪山书房");
+  await chooseScene(page, "雪山湖畔");
   await page.waitForTimeout(1000);
   await closeDrawer(page);
   await page.waitForTimeout(900);
@@ -127,18 +127,18 @@ async function recordVertical(page) {
 }
 
 async function recordLandscape(page) {
-  await recordCinematicScene(page, cinematicSceneIds[0], 20000, "01-snow-main");
+  await recordShowcaseScene(page, showcaseSceneIds[0], 21000, "01-snow-main");
 
-  for (let index = 1; index < cinematicSceneIds.length - 1; index += 1) {
-    await recordCinematicScene(page, cinematicSceneIds[index], 3000, `scene-${cinematicSceneIds[index]}`);
+  for (let index = 1; index < showcaseSceneIds.length - 1; index += 1) {
+    await recordShowcaseScene(page, showcaseSceneIds[index], 3500, `scene-${showcaseSceneIds[index]}`);
   }
 
-  await recordCinematicScene(page, cinematicSceneIds.at(-1), 12000, "02-snow-ending");
+  await recordShowcaseScene(page, showcaseSceneIds.at(-1), 11000, "02-snow-ending");
 }
 
-async function recordCinematicScene(page, sceneId, durationMs, frameName) {
+async function recordShowcaseScene(page, sceneId, durationMs, frameName) {
   const url = new URL(siteUrl);
-  url.searchParams.set("promo", "cinematic");
+  url.searchParams.set("promo", "showcase");
   url.searchParams.set("scene", sceneId);
 
   await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 60000 });

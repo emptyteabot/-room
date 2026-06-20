@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronLeft, ChevronRight, Expand, LogIn, Search, Settings2, Users } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Clock3, Expand, Headphones, LogIn, Search, Settings2, Sparkles, Users } from "lucide-react";
 import { ControlPanel } from "@/components/ControlPanel";
 import { defaultScene, focusScenes } from "@/lib/scenes";
 import { useTimerAudio } from "@/hooks/useTimerAudio";
@@ -28,17 +28,22 @@ type BuddyStatus = {
   updated_at: string;
 };
 
+type PromoMode = "cinematic" | "showcase";
+
 export function FocusRoom() {
   const timer = useTimerAudio();
   const initialPromo = getInitialPromo();
   const [sceneId, setSceneId] = useState(initialPromo.sceneId);
-  const [immersive, setImmersive] = useState(initialPromo.cinematic);
+  const [immersive, setImmersive] = useState(Boolean(initialPromo.promoMode));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [buddyStatus, setBuddyStatus] = useState<BuddyStatus | null>(null);
-  const [cinematicPromo] = useState(initialPromo.cinematic);
+  const [promoMode] = useState(initialPromo.promoMode);
+  const cinematicPromo = promoMode === "cinematic";
+  const showcasePromo = promoMode === "showcase";
+  const promoActive = Boolean(promoMode);
   const shareTimerRef = useRef<number | null>(null);
   const syncedSessionsRef = useRef(0);
   const scene = useMemo(
@@ -248,11 +253,14 @@ export function FocusRoom() {
         muted
         playsInline
       />
-      <div className={`absolute inset-0 transition duration-500 ${cinematicPromo ? "bg-black/0" : immersive ? "bg-black/18" : "bg-black/40"}`} />
-      {!cinematicPromo ? (
+      <div className={`absolute inset-0 transition duration-500 ${cinematicPromo ? "bg-black/0" : showcasePromo ? "bg-black/10" : immersive ? "bg-black/18" : "bg-black/40"}`} />
+      {!promoActive ? (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(255,255,255,0.1),transparent_28%),linear-gradient(90deg,rgba(0,0,0,0.52),rgba(0,0,0,0.08)_48%,rgba(0,0,0,0.48))]" />
       ) : null}
-      {!cinematicPromo ? (
+      {showcasePromo ? (
+        <PromoFeatureStrip sceneTitle={scene.title} />
+      ) : null}
+      {!promoActive ? (
         <Header
           immersive={immersive}
           sceneTitle={scene.title}
@@ -261,7 +269,7 @@ export function FocusRoom() {
           onToggleFullscreen={toggleFullscreen}
         />
       ) : null}
-      {!cinematicPromo ? (
+      {!promoActive ? (
         <button
           className="fixed left-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
           onClick={() => moveScene(-1)}
@@ -270,7 +278,7 @@ export function FocusRoom() {
           <ChevronLeft className="size-7" />
         </button>
       ) : null}
-      {!cinematicPromo ? (
+      {!promoActive ? (
         <button
           className="fixed right-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
           onClick={() => moveScene(1)}
@@ -311,14 +319,14 @@ export function FocusRoom() {
             </div>
           </div>
         </section>
-      ) : !cinematicPromo ? (
+      ) : !promoActive ? (
         <div className="pointer-events-none fixed right-6 top-26 z-10 hidden rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm text-white/58 backdrop-blur-xl sm:block">
           {scene.title} · {buddyStatus?.same_scene_count ?? 1} 位同场景
         </div>
       ) : (
         null
       )}
-      {!cinematicPromo ? (
+      {!promoActive ? (
         <ControlPanel
           mode="drawer"
           open={drawerOpen}
@@ -343,7 +351,7 @@ export function FocusRoom() {
           aria-label="关闭设置遮罩"
         />
       ) : null}
-      {!drawerOpen && !cinematicPromo ? (
+      {!drawerOpen && !promoActive ? (
         <ControlPanel
           mode="dock"
           selectedSceneId={scene.id}
@@ -368,6 +376,63 @@ export function FocusRoom() {
         />
       ) : null}
     </main>
+  );
+}
+
+function PromoFeatureStrip({ sceneTitle }: { sceneTitle: string }) {
+  const items = [
+    {
+      icon: Sparkles,
+      label: "Innook 专注一隅",
+      value: "全屏沉浸自习室",
+    },
+    {
+      icon: Clock3,
+      label: "番茄钟",
+      value: "50:00 专注中",
+    },
+    {
+      icon: BookOpen,
+      label: "动态场景",
+      value: `${sceneTitle} · ${focusScenes.length} 套`,
+    },
+    {
+      icon: Headphones,
+      label: "双路混音",
+      value: "Lo-fi 72 · 雨声 38",
+    },
+    {
+      icon: Users,
+      label: "学习资产",
+      value: "今日 86m · PWA",
+    },
+  ];
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-8 pb-8">
+      <div className="mx-auto grid max-w-7xl grid-cols-5 gap-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div
+              key={item.label}
+              className="min-w-0 rounded-2xl border border-white/14 bg-black/24 px-5 py-4 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-white/12 bg-white/10">
+                  <Icon className="size-5 text-white/82" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-white/48">{item.label}</p>
+                  <p className="truncate text-lg font-semibold leading-7 text-white">{item.value}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -468,18 +533,19 @@ function createAnonymousUserId() {
 function getInitialPromo() {
   if (typeof window === "undefined") {
     return {
-      cinematic: false,
+      promoMode: null as PromoMode | null,
       sceneId: defaultScene.id,
     };
   }
 
   const searchParams = new URLSearchParams(window.location.search);
   const sceneParam = searchParams.get("scene");
-  const cinematic = searchParams.get("promo") === "cinematic";
+  const promoParam = searchParams.get("promo");
+  const promoMode = promoParam === "cinematic" || promoParam === "showcase" ? promoParam : null;
   const sceneId = sceneParam && focusScenes.some((item) => item.id === sceneParam) ? sceneParam : defaultScene.id;
 
   return {
-    cinematic,
+    promoMode,
     sceneId,
   };
 }
