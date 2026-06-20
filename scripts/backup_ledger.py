@@ -13,7 +13,7 @@ from pathlib import Path
 LEDGER_PATH = Path(os.environ.get("FOCUS_ROOM_LEDGER_PATH", "/opt/focus-room/data/vip-ledger.json"))
 BACKUP_DIR = Path(os.environ.get("FOCUS_ROOM_BACKUP_DIR", "/opt/focus-room/data/backups"))
 RETENTION_COUNT = int(os.environ.get("FOCUS_ROOM_BACKUP_RETENTION", "14"))
-WEBHOOK_URL = os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_URL", "").strip()
+WEBHOOK_URL = (os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_URL") or os.environ.get("REMOTE_BACKUP_URL") or "").strip()
 WEBHOOK_TOKEN = os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_TOKEN", "").strip()
 WEBHOOK_TIMEOUT = float(os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_TIMEOUT", "5"))
 

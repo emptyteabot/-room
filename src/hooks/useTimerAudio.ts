@@ -32,6 +32,8 @@ type TimerAudioState = {
 };
 
 const timerAudioStorageKey = "focus_room_timer_audio";
+const finishAudioUrl = "/focus-room/audio/focus-complete.wav";
+const silentAudioUrl = "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg";
 
 export const useTimerAudioStore = create<TimerAudioState>((set) => ({
   selectedMinutes: 50,
@@ -117,7 +119,9 @@ export const useTimerAudioStore = create<TimerAudioState>((set) => ({
 export function useTimerAudio() {
   const musicRef = useRef<HTMLAudioElement | null>(null);
   const ambienceRef = useRef<HTMLAudioElement | null>(null);
+  const finishSoundRef = useRef<HTMLAudioElement | null>(null);
   const originalTitleRef = useRef<string | null>(null);
+  const previousCompletedSessionsRef = useRef(0);
   const state = useTimerAudioStore();
 
   useEffect(() => {
@@ -155,20 +159,25 @@ export function useTimerAudio() {
 
     musicRef.current = new Audio(currentState.musicUrl);
     ambienceRef.current = new Audio(currentState.ambienceUrl);
+    finishSoundRef.current = createFinishSound();
 
     const music = musicRef.current;
     const ambience = ambienceRef.current;
+    const finishSound = finishSoundRef.current;
 
     music.loop = true;
     ambience.loop = true;
     music.preload = "auto";
     ambience.preload = "auto";
+    finishSound.preload = "auto";
 
     return () => {
       music.pause();
       ambience.pause();
+      finishSound.pause();
       music.src = "";
       ambience.src = "";
+      finishSound.src = "";
     };
   }, []);
 
@@ -222,6 +231,22 @@ export function useTimerAudio() {
   }, [state.isRunning]);
 
   useEffect(() => {
+    if (state.completedSessions <= previousCompletedSessionsRef.current) {
+      previousCompletedSessionsRef.current = state.completedSessions;
+      return;
+    }
+
+    previousCompletedSessionsRef.current = state.completedSessions;
+
+    if (!finishSoundRef.current) {
+      return;
+    }
+
+    finishSoundRef.current.currentTime = 0;
+    void finishSoundRef.current.play();
+  }, [state.completedSessions]);
+
+  useEffect(() => {
     if (!state.isRunning) {
       return;
     }
@@ -267,6 +292,7 @@ export function useTimerAudio() {
       return;
     }
 
+    void unlockAudioPlayback();
     state.start();
     void musicRef.current?.play();
     void ambienceRef.current?.play();
@@ -277,6 +303,26 @@ export function useTimerAudio() {
     formattedTime,
     toggle,
   };
+}
+
+async function unlockAudioPlayback() {
+  const silentAudio = new Audio(silentAudioUrl);
+  silentAudio.muted = true;
+  silentAudio.volume = 0;
+
+  try {
+    await silentAudio.play();
+    silentAudio.pause();
+    silentAudio.src = "";
+  } catch {
+    silentAudio.src = "";
+  }
+}
+
+function createFinishSound() {
+  const audio = new Audio(finishAudioUrl);
+  audio.volume = 0.86;
+  return audio;
 }
 
 function getRemainingSeconds(state: TimerAudioState) {

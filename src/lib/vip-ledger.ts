@@ -8,6 +8,16 @@ export type VipLedgerRecord = {
   amount: number;
   updated_at: string;
   referrer_id?: string;
+  stats?: VipLedgerStats;
+};
+
+export type VipLedgerStats = {
+  stats_date: string;
+  today_focus_seconds: number;
+  completed_sessions: number;
+  total_focus_seconds: number;
+  current_task?: string;
+  synced_at: string;
 };
 
 type VipLedger = Record<string, VipLedgerRecord>;
@@ -29,7 +39,6 @@ export async function activateVip(input: {
   await acquireLedgerLock();
 
   try {
-    const ledgerPath = getLedgerPath();
     const ledger = readLedger();
     const now = new Date();
     const isNewAccount = !ledger[input.account];
@@ -63,12 +72,7 @@ export async function activateVip(input: {
       };
     }
 
-    const ledgerDirectory = path.dirname(ledgerPath);
-    const temporaryPath = path.join(ledgerDirectory, `${path.basename(ledgerPath)}.${process.pid}.${Date.now()}.tmp`);
-
-    mkdirSync(ledgerDirectory, { recursive: true });
-    writeFileSync(temporaryPath, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
-    renameSync(temporaryPath, ledgerPath);
+    writeLedger(ledger);
 
     return {
       record: ledger[input.account],
@@ -87,7 +91,52 @@ export function getVipUserStatus(anonymousUserId: string) {
   return {
     vip_expires_at: record?.vip_expires_at ?? null,
     referred_success_count: referredSuccessCount,
+    stats: record?.stats ?? null,
   };
+}
+
+export async function syncVipUserStats(input: {
+  anonymousUserId: string;
+  statsDate: string;
+  todayFocusSeconds: number;
+  completedSessions: number;
+  totalFocusSeconds: number;
+  currentTask?: string;
+}) {
+  await acquireLedgerLock();
+
+  try {
+    const ledger = readLedger();
+    const now = new Date().toISOString();
+    const existingRecord = ledger[input.anonymousUserId];
+    const existingStats = existingRecord?.stats;
+    const todayFocusSeconds = Math.max(input.todayFocusSeconds, existingStats?.today_focus_seconds ?? 0);
+    const completedSessions = Math.max(input.completedSessions, existingStats?.completed_sessions ?? 0);
+    const totalFocusSeconds = Math.max(input.totalFocusSeconds, existingStats?.total_focus_seconds ?? 0);
+
+    ledger[input.anonymousUserId] = {
+      account: input.anonymousUserId,
+      vip_expires_at: existingRecord?.vip_expires_at ?? now,
+      order_id: existingRecord?.order_id ?? "stats-sync",
+      amount: existingRecord?.amount ?? 0,
+      updated_at: now,
+      ...(existingRecord?.referrer_id ? { referrer_id: existingRecord.referrer_id } : {}),
+      stats: {
+        stats_date: input.statsDate,
+        today_focus_seconds: todayFocusSeconds,
+        completed_sessions: completedSessions,
+        total_focus_seconds: totalFocusSeconds,
+        ...(input.currentTask ? { current_task: input.currentTask } : {}),
+        synced_at: now,
+      },
+    };
+
+    writeLedger(ledger);
+
+    return getVipUserStatus(input.anonymousUserId);
+  } finally {
+    rmSync(getLedgerLockPath(), { force: true });
+  }
 }
 
 async function acquireLedgerLock() {
@@ -116,6 +165,16 @@ function getLedgerPath() {
 
 function getLedgerLockPath() {
   return `${getLedgerPath()}.lock`;
+}
+
+function writeLedger(ledger: VipLedger) {
+  const ledgerPath = getLedgerPath();
+  const ledgerDirectory = path.dirname(ledgerPath);
+  const temporaryPath = path.join(ledgerDirectory, `${path.basename(ledgerPath)}.${process.pid}.${Date.now()}.tmp`);
+
+  mkdirSync(ledgerDirectory, { recursive: true });
+  writeFileSync(temporaryPath, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
+  renameSync(temporaryPath, ledgerPath);
 }
 
 function isFileExistsError(error: unknown) {

@@ -33,11 +33,21 @@ type ControlPanelProps = {
 type UserStatus = {
   vip_expires_at: string | null;
   referred_success_count: number;
+  stats: UserStats | null;
 };
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+type UserStats = {
+  stats_date: string;
+  today_focus_seconds: number;
+  completed_sessions: number;
+  total_focus_seconds: number;
+  current_task?: string;
+  synced_at: string;
 };
 
 export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
@@ -47,6 +57,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const shareTimerRef = useRef<number | null>(null);
+  const syncedSessionsRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -86,6 +97,7 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
         setUserStatus({
           vip_expires_at: payload.vip_expires_at,
           referred_success_count: payload.referred_success_count,
+          stats: payload.stats,
         });
       }
     };
@@ -98,6 +110,31 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
       window.clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    if (timer.completedSessions <= 0 || timer.completedSessions === syncedSessionsRef.current) {
+      return;
+    }
+
+    syncedSessionsRef.current = timer.completedSessions;
+    void syncUserStats({
+      stats_date: timer.statsDate,
+      today_focus_seconds: timer.todayFocusSeconds,
+      completed_sessions: timer.completedSessions,
+      total_focus_seconds: timer.totalFocusSeconds,
+      current_task: timer.currentTask,
+    }).then((nextStatus) => {
+      if (nextStatus) {
+        setUserStatus(nextStatus);
+      }
+    });
+  }, [
+    timer.completedSessions,
+    timer.currentTask,
+    timer.statsDate,
+    timer.todayFocusSeconds,
+    timer.totalFocusSeconds,
+  ]);
 
   const showShareToast = () => {
     setShareCopied(true);
@@ -373,6 +410,35 @@ function formatVipRemainingDays(expiresAt?: string | null) {
   }
 
   return Math.ceil(remainingMs / 86400000);
+}
+
+async function syncUserStats(stats: Omit<UserStats, "synced_at">) {
+  const response = await fetch("/focus-room/api/user/status", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      anonymous_user_id: getAnonymousUserId(),
+      stats,
+    }),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = (await response.json()) as UserStatus & { ok: boolean };
+
+  if (!payload.ok) {
+    return null;
+  }
+
+  return {
+    vip_expires_at: payload.vip_expires_at,
+    referred_success_count: payload.referred_success_count,
+    stats: payload.stats,
+  };
 }
 
 function tryCopySelection() {
