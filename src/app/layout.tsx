@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://43.135.51.214"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://focus-room-proxy.workers.dev"),
   title: "专注一隅 Web 网页版 - 零门槛沉浸式线上自习室",
   description: "无需内测码，全屏 4K 沉浸式场景伴学，内置双路 Lofi 混音与极简番茄钟。",
   keywords: ["专注一隅", "线上自习室", "Study With Me", "番茄钟网页版"],

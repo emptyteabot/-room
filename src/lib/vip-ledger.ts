@@ -7,14 +7,13 @@ export type VipLedgerRecord = {
   order_id: string;
   amount: number;
   updated_at: string;
+  referrer_id?: string;
 };
 
 type VipLedger = Record<string, VipLedgerRecord>;
 
-const ledgerPath = path.join(process.cwd(), "data", "vip-ledger.json");
-const ledgerLockPath = `${ledgerPath}.lock`;
-
 function readLedger(): VipLedger {
+  const ledgerPath = getLedgerPath();
   const content = existsSync(ledgerPath) ? readFileSync(ledgerPath, "utf8") : "{}";
   return JSON.parse(content) as VipLedger;
 }
@@ -30,6 +29,7 @@ export async function activateVip(input: {
   await acquireLedgerLock();
 
   try {
+    const ledgerPath = getLedgerPath();
     const ledger = readLedger();
     const now = new Date();
     const isNewAccount = !ledger[input.account];
@@ -37,16 +37,19 @@ export async function activateVip(input: {
     const baseDate = currentExpiresAt && new Date(currentExpiresAt) > now ? new Date(currentExpiresAt) : new Date(now);
     baseDate.setMonth(baseDate.getMonth() + input.months);
 
+    const referrerId = input.referrerId && input.referrerId !== input.account ? input.referrerId : undefined;
+    const storedReferrerId = ledger[input.account]?.referrer_id ?? referrerId;
+
     ledger[input.account] = {
       account: input.account,
       vip_expires_at: baseDate.toISOString(),
       order_id: input.orderId,
       amount: input.amount,
       updated_at: now.toISOString(),
+      ...(storedReferrerId ? { referrer_id: storedReferrerId } : {}),
     };
 
     const rewardDays = input.rewardDays ?? 0;
-    const referrerId = input.referrerId;
     const referrer = referrerId ? ledger[referrerId] : undefined;
 
     if (isNewAccount && referrerId && referrer && referrerId !== input.account && rewardDays > 0) {
@@ -72,11 +75,24 @@ export async function activateVip(input: {
       rewardedReferrer: referrerId ? ledger[referrerId] : undefined,
     };
   } finally {
-    rmSync(ledgerLockPath, { force: true });
+    rmSync(getLedgerLockPath(), { force: true });
   }
 }
 
+export function getVipUserStatus(anonymousUserId: string) {
+  const ledger = readLedger();
+  const record = ledger[anonymousUserId];
+  const referredSuccessCount = Object.values(ledger).filter((item) => item.referrer_id === anonymousUserId).length;
+
+  return {
+    vip_expires_at: record?.vip_expires_at ?? null,
+    referred_success_count: referredSuccessCount,
+  };
+}
+
 async function acquireLedgerLock() {
+  const ledgerPath = getLedgerPath();
+  const ledgerLockPath = getLedgerLockPath();
   mkdirSync(path.dirname(ledgerPath), { recursive: true });
 
   while (true) {
@@ -92,6 +108,14 @@ async function acquireLedgerLock() {
       await new Promise((resolve) => setTimeout(resolve, 12));
     }
   }
+}
+
+function getLedgerPath() {
+  return process.env.FOCUS_ROOM_LEDGER_PATH ?? path.join(process.cwd(), "data", "vip-ledger.json");
+}
+
+function getLedgerLockPath() {
+  return `${getLedgerPath()}.lock`;
 }
 
 function isFileExistsError(error: unknown) {

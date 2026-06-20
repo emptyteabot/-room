@@ -28,10 +28,16 @@ type ControlPanelProps = {
   onSceneChange: (sceneId: string) => void;
 };
 
+type UserStatus = {
+  vip_expires_at: string | null;
+  referred_success_count: number;
+};
+
 export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelProps) {
   const timer = useTimerAudio();
   const progress = 1 - timer.remainingSeconds / (timer.selectedMinutes * 60);
   const [shareCopied, setShareCopied] = useState(false);
+  const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const shareTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,6 +45,38 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
       if (shareTimerRef.current) {
         window.clearTimeout(shareTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUserStatus = async () => {
+      const anonymousUserId = getAnonymousUserId();
+      const response = await fetch(`/focus-room/api/user/status?anonymous_user_id=${encodeURIComponent(anonymousUserId)}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as UserStatus & { ok: boolean };
+
+      if (active && payload.ok) {
+        setUserStatus({
+          vip_expires_at: payload.vip_expires_at,
+          referred_success_count: payload.referred_success_count,
+        });
+      }
+    };
+
+    void loadUserStatus();
+    const intervalId = window.setInterval(() => void loadUserStatus(), 45000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 
@@ -225,6 +263,9 @@ export function ControlPanel({ selectedSceneId, onSceneChange }: ControlPanelPro
             </div>
           </div>
           <div className="relative mt-3">
+            <div className="mb-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-center text-xs font-medium text-white/64 backdrop-blur-xl">
+              已邀请 {userStatus?.referred_success_count ?? 0} 位学友 · VIP 剩余 {formatVipRemainingDays(userStatus?.vip_expires_at)} 天
+            </div>
             <button
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-medium text-white/78 backdrop-blur-xl transition hover:border-white/24 hover:bg-white/10"
               onClick={handleShare}
@@ -262,6 +303,20 @@ function createAnonymousUserId() {
   }
 
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function formatVipRemainingDays(expiresAt?: string | null) {
+  if (!expiresAt) {
+    return 0;
+  }
+
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(remainingMs / 86400000);
 }
 
 function tryCopySelection() {

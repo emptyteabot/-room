@@ -14,10 +14,7 @@ const worker = {
       });
     }
 
-    const requestUrl = new URL(request.url);
-    const targetUrl = new URL(origin);
-    targetUrl.pathname = `${targetUrl.pathname.replace(/\/$/, "")}${requestUrl.pathname === "/" ? "" : requestUrl.pathname}`;
-    targetUrl.search = requestUrl.search;
+    const targetUrl = createTargetUrl(request.url);
 
     const proxyRequest = new Request(targetUrl, request);
     const response = await fetch(proxyRequest);
@@ -39,6 +36,29 @@ const worker = {
 };
 
 export default worker;
+
+function createTargetUrl(url) {
+  const requestUrl = new URL(url);
+  const originUrl = new URL(origin);
+  const targetUrl = new URL(origin);
+  const originPath = originUrl.pathname.replace(/\/$/, "");
+
+  if (requestUrl.pathname === "/") {
+    targetUrl.pathname = originPath;
+    targetUrl.search = requestUrl.search;
+    return targetUrl;
+  }
+
+  if (requestUrl.pathname === originPath || requestUrl.pathname.startsWith(`${originPath}/`)) {
+    targetUrl.pathname = requestUrl.pathname;
+    targetUrl.search = requestUrl.search;
+    return targetUrl;
+  }
+
+  targetUrl.pathname = `${originPath}${requestUrl.pathname}`;
+  targetUrl.search = requestUrl.search;
+  return targetUrl;
+}
 
 function renderGuidePage(url) {
   const escapedUrl = escapeHtml(url);

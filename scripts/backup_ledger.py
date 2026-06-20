@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import gzip
+import json
 import os
 import shutil
+import sys
+from threading import Thread
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +13,9 @@ from pathlib import Path
 LEDGER_PATH = Path(os.environ.get("FOCUS_ROOM_LEDGER_PATH", "/opt/focus-room/data/vip-ledger.json"))
 BACKUP_DIR = Path(os.environ.get("FOCUS_ROOM_BACKUP_DIR", "/opt/focus-room/data/backups"))
 RETENTION_COUNT = int(os.environ.get("FOCUS_ROOM_BACKUP_RETENTION", "14"))
+WEBHOOK_URL = os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_URL", "").strip()
+WEBHOOK_TOKEN = os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_TOKEN", "").strip()
+WEBHOOK_TIMEOUT = float(os.environ.get("FOCUS_ROOM_BACKUP_WEBHOOK_TIMEOUT", "5"))
 
 
 def main() -> None:
@@ -28,7 +34,38 @@ def main() -> None:
     for stale_backup in backups[RETENTION_COUNT:]:
         stale_backup.unlink()
 
+    send_remote_backup(LEDGER_PATH.read_text(encoding="utf-8"), backup_path)
+
     print(str(backup_path))
+
+
+def send_remote_backup(ledger_content: str, backup_path: Path) -> None:
+    if not WEBHOOK_URL:
+        return
+
+    payload = {
+        "source": "focus-room",
+        "backup_name": backup_path.name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "ledger": json.loads(ledger_content),
+    }
+    headers = {"content-type": "application/json"}
+
+    if WEBHOOK_TOKEN:
+        headers["authorization"] = f"Bearer {WEBHOOK_TOKEN}"
+
+    def post_payload() -> None:
+        try:
+            import requests
+
+            response = requests.post(WEBHOOK_URL, json=payload, headers=headers, timeout=WEBHOOK_TIMEOUT)
+            response.raise_for_status()
+        except Exception as error:
+            print(f"remote backup failed: {error}", file=sys.stderr)
+
+    worker = Thread(target=post_payload)
+    worker.start()
+    worker.join(WEBHOOK_TIMEOUT + 1)
 
 
 if __name__ == "__main__":
