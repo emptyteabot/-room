@@ -30,13 +30,15 @@ type BuddyStatus = {
 
 export function FocusRoom() {
   const timer = useTimerAudio();
-  const [sceneId, setSceneId] = useState(defaultScene.id);
-  const [immersive, setImmersive] = useState(false);
+  const initialPromo = getInitialPromo();
+  const [sceneId, setSceneId] = useState(initialPromo.sceneId);
+  const [immersive, setImmersive] = useState(initialPromo.cinematic);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
   const [buddyStatus, setBuddyStatus] = useState<BuddyStatus | null>(null);
+  const [cinematicPromo] = useState(initialPromo.cinematic);
   const shareTimerRef = useRef<number | null>(null);
   const syncedSessionsRef = useRef(0);
   const scene = useMemo(
@@ -246,29 +248,37 @@ export function FocusRoom() {
         muted
         playsInline
       />
-      <div className={`absolute inset-0 transition duration-500 ${immersive ? "bg-black/18" : "bg-black/40"}`} />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(255,255,255,0.1),transparent_28%),linear-gradient(90deg,rgba(0,0,0,0.52),rgba(0,0,0,0.08)_48%,rgba(0,0,0,0.48))]" />
-      <Header
-        immersive={immersive}
-        sceneTitle={scene.title}
-        onOpenSettings={() => setDrawerOpen(true)}
-        onToggleImmersive={() => setImmersive((value) => !value)}
-        onToggleFullscreen={toggleFullscreen}
-      />
-      <button
-        className="fixed left-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
-        onClick={() => moveScene(-1)}
-        aria-label="上一个场景"
-      >
-        <ChevronLeft className="size-7" />
-      </button>
-      <button
-        className="fixed right-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
-        onClick={() => moveScene(1)}
-        aria-label="下一个场景"
-      >
-        <ChevronRight className="size-7" />
-      </button>
+      <div className={`absolute inset-0 transition duration-500 ${cinematicPromo ? "bg-black/0" : immersive ? "bg-black/18" : "bg-black/40"}`} />
+      {!cinematicPromo ? (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(255,255,255,0.1),transparent_28%),linear-gradient(90deg,rgba(0,0,0,0.52),rgba(0,0,0,0.08)_48%,rgba(0,0,0,0.48))]" />
+      ) : null}
+      {!cinematicPromo ? (
+        <Header
+          immersive={immersive}
+          sceneTitle={scene.title}
+          onOpenSettings={() => setDrawerOpen(true)}
+          onToggleImmersive={() => setImmersive((value) => !value)}
+          onToggleFullscreen={toggleFullscreen}
+        />
+      ) : null}
+      {!cinematicPromo ? (
+        <button
+          className="fixed left-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
+          onClick={() => moveScene(-1)}
+          aria-label="上一个场景"
+        >
+          <ChevronLeft className="size-7" />
+        </button>
+      ) : null}
+      {!cinematicPromo ? (
+        <button
+          className="fixed right-5 top-1/2 z-20 grid size-14 -translate-y-1/2 place-items-center rounded-full border border-white/12 bg-black/22 text-white/72 backdrop-blur-xl transition hover:border-white/28 hover:bg-white/10 hover:text-white"
+          onClick={() => moveScene(1)}
+          aria-label="下一个场景"
+        >
+          <ChevronRight className="size-7" />
+        </button>
+      ) : null}
       {!immersive ? (
         <section className="relative z-10 flex min-h-dvh items-center px-6 pb-24 pt-28 sm:px-10 lg:px-14">
           <div className="max-w-5xl">
@@ -301,27 +311,31 @@ export function FocusRoom() {
             </div>
           </div>
         </section>
-      ) : (
+      ) : !cinematicPromo ? (
         <div className="pointer-events-none fixed right-6 top-26 z-10 hidden rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm text-white/58 backdrop-blur-xl sm:block">
           {scene.title} · {buddyStatus?.same_scene_count ?? 1} 位同场景
         </div>
+      ) : (
+        null
       )}
-      <ControlPanel
-        mode="drawer"
-        open={drawerOpen}
-        selectedSceneId={scene.id}
-        immersive={immersive}
-        fullscreen={fullscreen}
-        timer={timer}
-        userStatus={userStatus}
-        buddyStatus={buddyStatus}
-        shareCopied={shareCopied}
-        onClose={() => setDrawerOpen(false)}
-        onSceneChange={setSceneId}
-        onShare={handleShare}
-        onToggleImmersive={() => setImmersive((value) => !value)}
-        onToggleFullscreen={toggleFullscreen}
-      />
+      {!cinematicPromo ? (
+        <ControlPanel
+          mode="drawer"
+          open={drawerOpen}
+          selectedSceneId={scene.id}
+          immersive={immersive}
+          fullscreen={fullscreen}
+          timer={timer}
+          userStatus={userStatus}
+          buddyStatus={buddyStatus}
+          shareCopied={shareCopied}
+          onClose={() => setDrawerOpen(false)}
+          onSceneChange={setSceneId}
+          onShare={handleShare}
+          onToggleImmersive={() => setImmersive((value) => !value)}
+          onToggleFullscreen={toggleFullscreen}
+        />
+      ) : null}
       {drawerOpen ? (
         <button
           className="fixed inset-0 z-20 cursor-default bg-black/18 backdrop-blur-[2px] sm:bg-transparent sm:backdrop-blur-0"
@@ -329,7 +343,7 @@ export function FocusRoom() {
           aria-label="关闭设置遮罩"
         />
       ) : null}
-      {!drawerOpen ? (
+      {!drawerOpen && !cinematicPromo ? (
         <ControlPanel
           mode="dock"
           selectedSceneId={scene.id}
@@ -449,6 +463,25 @@ function createAnonymousUserId() {
   }
 
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getInitialPromo() {
+  if (typeof window === "undefined") {
+    return {
+      cinematic: false,
+      sceneId: defaultScene.id,
+    };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const sceneParam = searchParams.get("scene");
+  const cinematic = searchParams.get("promo") === "cinematic";
+  const sceneId = sceneParam && focusScenes.some((item) => item.id === sceneParam) ? sceneParam : defaultScene.id;
+
+  return {
+    cinematic,
+    sceneId,
+  };
 }
 
 async function syncUserStats(stats: Omit<UserStats, "synced_at">) {

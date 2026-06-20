@@ -6,6 +6,7 @@ import ffmpegPath from "ffmpeg-static";
 
 const format = process.env.PROMO_FORMAT === "landscape" ? "landscape" : "vertical";
 const siteUrl = process.env.PROMO_SITE_URL ?? "http://127.0.0.1:3000/focus-room";
+const cinematicSceneIds = ["snow-study", "window-reading", "cafe-notes", "library-aisle", "rain-window", "mountain-clouds", "snow-study"];
 const profile = format === "landscape"
   ? {
       width: 1920,
@@ -57,12 +58,12 @@ const context = await browser.newContext({
 });
 
 const page = await context.newPage();
-await page.goto(siteUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
 
 if (format === "landscape") {
   await recordLandscape(page);
 } else {
+  await page.goto(siteUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
   await recordVertical(page);
 }
 
@@ -92,7 +93,7 @@ const ffmpeg = spawnSync(ffmpegPath, [
   "-preset",
   "medium",
   "-crf",
-  format === "landscape" ? "20" : "21",
+  format === "landscape" ? "16" : "21",
   "-movflags",
   "+faststart",
   publicMp4,
@@ -126,30 +127,28 @@ async function recordVertical(page) {
 }
 
 async function recordLandscape(page) {
-  await page.waitForTimeout(3400);
-  await screenshot(page, "01-snow-panorama");
-  await page.getByRole("button", { name: "开始学习" }).click({ force: true });
-  await page.waitForTimeout(5200);
-  await screenshot(page, "02-snow-fullscreen-timer");
-  await showPanel(page);
-  await page.getByText("沉浸设置").waitFor({ timeout: 10000 });
-  await page.waitForTimeout(2600);
-  await screenshot(page, "03-control-panel");
+  await recordCinematicScene(page, cinematicSceneIds[0], 20000, "01-snow-main");
 
-  for (const sceneName of ["窗边阅读", "咖啡笔记", "图书馆书架", "雨窗白噪", "雪岭云海"]) {
-    await chooseScene(page, sceneName);
-    await page.waitForTimeout(2200);
-    await screenshot(page, `scene-${sceneName}`);
+  for (let index = 1; index < cinematicSceneIds.length - 1; index += 1) {
+    await recordCinematicScene(page, cinematicSceneIds[index], 3000, `scene-${cinematicSceneIds[index]}`);
   }
 
-  await chooseScene(page, "雪山书房");
-  await page.waitForTimeout(1400);
-  await closeDrawer(page);
-  await page.waitForTimeout(4600);
-  await screenshot(page, "04-final-snow-focus");
-  await showPanel(page);
-  await page.getByText("沉浸设置").waitFor({ timeout: 10000 });
-  await page.waitForTimeout(2600);
+  await recordCinematicScene(page, cinematicSceneIds.at(-1), 12000, "02-snow-ending");
+}
+
+async function recordCinematicScene(page, sceneId, durationMs, frameName) {
+  const url = new URL(siteUrl);
+  url.searchParams.set("promo", "cinematic");
+  url.searchParams.set("scene", sceneId);
+
+  await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForFunction(() => {
+    const video = document.querySelector("video");
+    return video && video.readyState >= 2 && video.videoWidth > 0;
+  }, { timeout: 20000 });
+  await page.waitForTimeout(600);
+  await page.waitForTimeout(durationMs);
+  await screenshot(page, frameName);
 }
 
 async function openDrawer(page) {
