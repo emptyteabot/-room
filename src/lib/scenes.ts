@@ -21,6 +21,42 @@ export type AudioTrack = {
 
 export const focusScenes: FocusScene[] = [
   {
+    id: "snow-study",
+    title: "雪山书房",
+    subtitle: "冷光、雪景、长时段",
+    tone: "SNOW",
+    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_SNOW_STUDY_VIDEO", "https://assets.mixkit.co/videos/3397/3397-1080.mp4"),
+    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_SNOW_STUDY_POSTER", "https://images.unsplash.com/photo-1489674267075-cee793167910?auto=format&fit=crop&w=1600&q=80"),
+    icon: MountainSnow,
+  },
+  {
+    id: "window-reading",
+    title: "窗边阅读",
+    subtitle: "晨光、书页、低噪音",
+    tone: "READ",
+    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_WINDOW_READING_VIDEO", "https://assets.mixkit.co/videos/42741/42741-1080.mp4"),
+    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_WINDOW_READING_POSTER", "https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=1600&q=80"),
+    icon: BookOpen,
+  },
+  {
+    id: "cafe-notes",
+    title: "咖啡笔记",
+    subtitle: "手写、咖啡、轻节拍",
+    tone: "CAFE",
+    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_CAFE_NOTES_VIDEO", "https://assets.mixkit.co/videos/1743/1743-1080.mp4"),
+    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_CAFE_NOTES_POSTER", "https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=1600&q=80"),
+    icon: Sunrise,
+  },
+  {
+    id: "library-aisle",
+    title: "图书馆书架",
+    subtitle: "书架、静区、稳定节拍",
+    tone: "BOOKS",
+    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_LIBRARY_AISLE_VIDEO", "https://assets.mixkit.co/videos/21591/21591-1080.mp4"),
+    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_LIBRARY_AISLE_POSTER", "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1600&q=80"),
+    icon: Library,
+  },
+  {
     id: "desk-focus",
     title: "桌面深工",
     subtitle: "电脑、笔记、低干扰",
@@ -57,16 +93,6 @@ export const focusScenes: FocusScene[] = [
     icon: BookOpen,
   },
   {
-    id: "snow-study",
-    title: "雪山书房",
-    subtitle: "冷空气、白噪、长时段",
-    tone: "SNOW",
-    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_SNOW_STUDY_VIDEO", "https://assets.mixkit.co/videos/3397/3397-1080.mp4"),
-    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_SNOW_STUDY_POSTER", "https://images.unsplash.com/photo-1489674267075-cee793167910?auto=format&fit=crop&w=1600&q=80"),
-    premium: true,
-    icon: MountainSnow,
-  },
-  {
     id: "book-aisle",
     title: "书架巡游",
     subtitle: "书页、检索、长线学习",
@@ -84,6 +110,16 @@ export const focusScenes: FocusScene[] = [
     posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_RAIN_WINDOW_POSTER", "https://images.unsplash.com/photo-1501999635878-71cb5379c2d8?auto=format&fit=crop&w=1600&q=80"),
     premium: true,
     icon: Trees,
+  },
+  {
+    id: "mountain-clouds",
+    title: "雪岭云海",
+    subtitle: "高海拔、冷色、低刺激",
+    tone: "ALPINE",
+    videoUrl: mediaUrl("NEXT_PUBLIC_SCENE_MOUNTAIN_CLOUDS_VIDEO", "https://assets.mixkit.co/videos/3335/3335-1080.mp4"),
+    posterUrl: mediaUrl("NEXT_PUBLIC_SCENE_MOUNTAIN_CLOUDS_POSTER", "https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?auto=format&fit=crop&w=1600&q=80"),
+    premium: true,
+    icon: MountainSnow,
   },
 ];
 

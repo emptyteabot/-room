@@ -25,10 +25,16 @@ const worker = {
     proxyHeaders.delete("x-forwarded-proto");
     proxyHeaders.delete("x-real-ip");
 
+    const upstreamMethod = request.method === "HEAD" ? "GET" : request.method;
+
+    if (request.method === "HEAD" && isVideoPath(targetUrl.pathname)) {
+      proxyHeaders.set("range", "bytes=0-0");
+    }
+
     const proxyRequest = new Request(targetUrl, {
-      method: request.method,
+      method: upstreamMethod,
       headers: proxyHeaders,
-      body: request.body,
+      body: request.method === "HEAD" ? null : request.body,
       redirect: "manual",
     });
     const response = await fetch(proxyRequest);
@@ -40,6 +46,14 @@ const worker = {
     }
 
     headers.set("x-focus-room-proxy", "cloudflare-worker");
+
+    if (request.method === "HEAD") {
+      return new Response(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
 
     return new Response(response.body, {
       status: response.status,
@@ -108,6 +122,10 @@ function renderGuidePage(url) {
   </main>
 </body>
 </html>`;
+}
+
+function isVideoPath(pathname) {
+  return /\.(mp4|webm|mov)$/i.test(pathname);
 }
 
 function escapeHtml(value) {

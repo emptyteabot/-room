@@ -38,6 +38,7 @@ yarn-error.log*
 /.deploy/
 preview-*.png
 /data/
+/marketing/
 
 # vercel
 .vercel

@@ -274,7 +274,7 @@ export function FocusRoom() {
           <div className="max-w-5xl">
             <p className="mb-5 text-xs font-semibold tracking-[0.44em] text-white/54">FOCUS · LEARN · GROW</p>
             <h1 className="max-w-5xl text-[clamp(4rem,8vw,8.5rem)] font-semibold leading-[0.95] text-white">
-              开启你的清晨自习室
+              进入{scene.title}
             </h1>
             <p className="mt-8 max-w-2xl text-lg leading-9 text-white/72">
               选择动态场景、音乐与节奏，点击开始后直接进入全屏沉浸学习。
