@@ -63,6 +63,26 @@ export function getBuddyStatus(sceneId?: string) {
   };
 }
 
+export function getBuddySceneBreakdown() {
+  const activeLedger = pruneInactiveBuddies(readBuddyLedger(), new Date());
+  const breakdown = new Map<string, { scene_id: string; scene_title: string; online_count: number; focusing_count: number }>();
+
+  Object.values(activeLedger).forEach((buddy) => {
+    const current = breakdown.get(buddy.scene_id) ?? {
+      scene_id: buddy.scene_id,
+      scene_title: buddy.scene_title,
+      online_count: 0,
+      focusing_count: 0,
+    };
+
+    current.online_count += 1;
+    current.focusing_count += buddy.is_focusing ? 1 : 0;
+    breakdown.set(buddy.scene_id, current);
+  });
+
+  return Array.from(breakdown.values()).sort((left, right) => right.online_count - left.online_count);
+}
+
 function readBuddyLedger(): BuddyLedger {
   const ledgerPath = getBuddyLedgerPath();
   const content = existsSync(ledgerPath) ? readFileSync(ledgerPath, "utf8") : "{}";

@@ -1,6 +1,6 @@
 {
-  "name": "专注一隅 Web 网页版",
-  "short_name": "专注一隅",
+  "name": "vibe studying room",
+  "short_name": "vibe studying room",
   "description": "零门槛沉浸式线上自习室，内置双路 Lofi 混音与极简番茄钟。",
   "start_url": "/focus-room",
   "scope": "/focus-room/",
@@ -13,7 +13,13 @@
       "src": "/focus-room/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/focus-room/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

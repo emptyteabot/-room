@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, Clock3, Expand, Headphones, LogIn, Search, Settings2, Sparkles, Users } from "lucide-react";
 import { ControlPanel } from "@/components/ControlPanel";
 import { defaultScene, focusScenes } from "@/lib/scenes";
@@ -45,12 +45,10 @@ export function FocusRoom() {
   const showcasePromo = promoMode === "showcase";
   const promoActive = Boolean(promoMode);
   const shareTimerRef = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const syncedSessionsRef = useRef(0);
-  const scene = useMemo(
-    () => focusScenes.find((item) => item.id === sceneId) ?? defaultScene,
-    [sceneId],
-  );
-
+  const scene = focusScenes.find((item) => item.id === sceneId) ?? defaultScene;
+  const sceneIndex = Math.max(0, focusScenes.findIndex((item) => item.id === scene.id));
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const referrerId = searchParams.get("ref");
@@ -65,6 +63,10 @@ export function FocusRoom() {
       window.localStorage.setItem("referrer_id", referrerId);
     }
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("focus_room_scene_id", scene.id);
+  }, [scene.id]);
 
   useEffect(() => {
     const handleFullscreenChange = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -238,13 +240,17 @@ export function FocusRoom() {
   const moveScene = (direction: -1 | 1) => {
     const currentIndex = focusScenes.findIndex((item) => item.id === scene.id);
     const nextIndex = (currentIndex + direction + focusScenes.length) % focusScenes.length;
-    setSceneId(focusScenes[nextIndex].id);
+    const nextScene = focusScenes[nextIndex];
+    const preloadPoster = new window.Image();
+    preloadPoster.src = nextScene.posterUrl;
+    setSceneId(nextScene.id);
   };
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-black text-white">
       <video
-        key={scene.videoUrl}
+        key={scene.id}
+        ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
         src={scene.videoUrl}
         poster={scene.posterUrl}
@@ -252,6 +258,18 @@ export function FocusRoom() {
         loop
         muted
         playsInline
+        preload="metadata"
+        onError={(event) => {
+          const video = event.currentTarget;
+
+          if (!scene.fallbackVideoUrl || video.src === scene.fallbackVideoUrl) {
+            return;
+          }
+
+          video.src = scene.fallbackVideoUrl;
+          video.load();
+          void video.play().catch(() => undefined);
+        }}
       />
       <div className={`absolute inset-0 transition duration-500 ${cinematicPromo ? "bg-black/0" : showcasePromo ? "bg-black/10" : immersive ? "bg-black/18" : "bg-black/40"}`} />
       {!promoActive ? (
@@ -314,14 +332,14 @@ export function FocusRoom() {
               </button>
               <span className="inline-flex h-15 items-center gap-2 rounded-full border border-white/12 bg-black/18 px-5 text-sm text-white/58 backdrop-blur-xl">
                 <Users className="size-4" />
-                {buddyStatus?.online_count ?? 1} 人在线 · {scene.title}
+                {buddyStatus?.online_count ?? 1} 人在线 · {scene.title} · {sceneIndex + 1}/{focusScenes.length}
               </span>
             </div>
           </div>
         </section>
       ) : !promoActive ? (
         <div className="pointer-events-none fixed right-6 top-26 z-10 hidden rounded-full border border-white/10 bg-black/18 px-4 py-2 text-sm text-white/58 backdrop-blur-xl sm:block">
-          {scene.title} · {buddyStatus?.same_scene_count ?? 1} 位同场景
+          {scene.title} · {sceneIndex + 1}/{focusScenes.length} · {buddyStatus?.same_scene_count ?? 1} 位同场景
         </div>
       ) : (
         null
@@ -383,7 +401,7 @@ function PromoFeatureStrip({ sceneTitle }: { sceneTitle: string }) {
   const items = [
     {
       icon: Sparkles,
-      label: "Innook 专注一隅",
+      label: "vibe studying room",
       value: "全屏沉浸自习室",
     },
     {
@@ -461,7 +479,7 @@ function Header({
             <BookOpen className="size-5" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xl font-semibold text-white sm:text-2xl">专注一隅</p>
+            <p className="truncate text-xl font-semibold text-white sm:text-2xl">vibe studying room</p>
             <p className="truncate text-xs text-white/44">{sceneTitle}</p>
           </div>
         </div>
@@ -540,9 +558,11 @@ function getInitialPromo() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const sceneParam = searchParams.get("scene");
+  const storedSceneId = window.localStorage.getItem("focus_room_scene_id");
   const promoParam = searchParams.get("promo");
   const promoMode = promoParam === "cinematic" || promoParam === "showcase" ? promoParam : null;
-  const sceneId = sceneParam && focusScenes.some((item) => item.id === sceneParam) ? sceneParam : defaultScene.id;
+  const preferredSceneId = sceneParam ?? storedSceneId;
+  const sceneId = preferredSceneId && focusScenes.some((item) => item.id === preferredSceneId) ? preferredSceneId : defaultScene.id;
 
   return {
     promoMode,

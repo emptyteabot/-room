@@ -95,6 +95,21 @@ export function getVipUserStatus(anonymousUserId: string) {
   };
 }
 
+export function getVipAggregateStats() {
+  const ledger = readLedger();
+  const records = Object.values(ledger);
+  const now = Date.now();
+
+  return {
+    total_users: records.length,
+    active_vip_count: records.filter((record) => new Date(record.vip_expires_at).getTime() > now).length,
+    total_revenue: records.reduce((sum, record) => sum + record.amount, 0),
+    referred_conversion_count: records.filter((record) => record.referrer_id).length,
+    total_focus_seconds: records.reduce((sum, record) => sum + (record.stats?.total_focus_seconds ?? 0), 0),
+    total_completed_sessions: records.reduce((sum, record) => sum + (record.stats?.completed_sessions ?? 0), 0),
+  };
+}
+
 export async function syncVipUserStats(input: {
   anonymousUserId: string;
   statsDate: string;
@@ -142,9 +157,14 @@ export async function syncVipUserStats(input: {
 async function acquireLedgerLock() {
   const ledgerPath = getLedgerPath();
   const ledgerLockPath = getLedgerLockPath();
+  const deadline = Date.now() + 5000;
   mkdirSync(path.dirname(ledgerPath), { recursive: true });
 
   while (true) {
+    if (Date.now() > deadline) {
+      throw new Error("ledger_lock_timeout");
+    }
+
     try {
       const fileDescriptor = openSync(ledgerLockPath, "wx");
       closeSync(fileDescriptor);

@@ -33,7 +33,6 @@ type TimerAudioState = {
 
 const timerAudioStorageKey = "focus_room_timer_audio";
 const finishAudioUrl = "/focus-room/audio/focus-complete.wav";
-const silentAudioUrl = "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg";
 
 export const useTimerAudioStore = create<TimerAudioState>((set) => ({
   selectedMinutes: 50,
@@ -108,11 +107,13 @@ export const useTimerAudioStore = create<TimerAudioState>((set) => ({
   setCurrentTask: (currentTask) => set({ currentTask }),
   hydrate: (snapshot) =>
     set((state) => ({
-      ...state,
-      ...snapshot,
+      ...normalizeStatsForToday({
+        ...state,
+        ...snapshot,
+        statsDate: snapshot.statsDate ?? getLocalDateKey(),
+      }),
       isRunning: false,
       endsAt: null,
-      statsDate: snapshot.statsDate ?? getLocalDateKey(),
     })),
 }));
 
@@ -283,7 +284,7 @@ export function useTimerAudio() {
       originalTitleRef.current = document.title;
     }
 
-    document.title = state.isRunning ? `${formattedTime} · 专注一隅` : (originalTitleRef.current ?? "专注一隅");
+    document.title = state.isRunning ? `${formattedTime} · vibe studying room` : (originalTitleRef.current ?? "vibe studying room");
   }, [formattedTime, state.isRunning]);
 
   const toggle = useCallback(() => {
@@ -306,7 +307,7 @@ export function useTimerAudio() {
 }
 
 async function unlockAudioPlayback() {
-  const silentAudio = new Audio(silentAudioUrl);
+  const silentAudio = new Audio("/focus-room/audio/unlock-silence.wav");
   silentAudio.muted = true;
   silentAudio.volume = 0;
 

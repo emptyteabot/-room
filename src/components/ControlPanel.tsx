@@ -142,7 +142,6 @@ export function ControlPanel({
                       src={scene.posterUrl}
                       alt=""
                       fill
-                      unoptimized
                       sizes="(max-width: 640px) 50vw, 260px"
                     />
                     <span className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-black/8" />
@@ -287,7 +286,7 @@ function BottomDock({
         <div className="grid gap-3 lg:grid-cols-[14rem_1fr_auto] lg:items-center">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/6 px-4 py-3">
             <div>
-              <p className="text-[0.62rem] font-semibold tracking-[0.28em] text-white/38">POMODORO #1</p>
+              <p className="text-[0.62rem] font-semibold tracking-[0.28em] text-white/38">POMODORO #{timer.completedSessions + 1}</p>
               <p className="mt-1 text-4xl font-semibold tabular-nums text-white">{timer.formattedTime}</p>
             </div>
             <span className="flex items-center gap-1.5 rounded-full border border-emerald-200/18 bg-emerald-200/10 px-2.5 py-1 text-xs text-emerald-100">

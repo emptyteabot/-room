@@ -3,3 +3,6 @@ main = "workers/focus-room-proxy.js"
 compatibility_date = "2025-01-01"
 workers_dev = true
 preview_urls = false
+
+[vars]
+ORIGIN_URL = "http://43-135-51-214.sslip.io/focus-room"

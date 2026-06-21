@@ -10,8 +10,24 @@ export function GET() {
   const posterHosts = focusScenes.map((scene) => new URL(scene.posterUrl).hostname);
   const audioHosts = [...musicTracks, ...ambienceTracks].map((track) => new URL(track.url).hostname);
   const mediaHosts = Array.from(new Set([...videoHosts, ...posterHosts, ...audioHosts])).sort();
-  const externalFallbackHosts = ["assets.mixkit.co", "images.unsplash.com", "cdn.pixabay.com"];
+  const externalFallbackHosts = [
+    "assets.mixkit.co",
+    "images.unsplash.com",
+    "cdn.pixabay.com",
+    "videos.pexels.com",
+    "images.pexels.com",
+  ];
   const fallbackMediaHosts = mediaHosts.filter((host) => externalFallbackHosts.includes(host));
+  const mainlandReadySceneCount = focusScenes.filter((scene) => {
+    const videoHost = new URL(scene.videoUrl).hostname;
+    const posterHost = new URL(scene.posterUrl).hostname;
+    const fallbackHost = scene.fallbackVideoUrl ? new URL(scene.fallbackVideoUrl).hostname : null;
+
+    return !externalFallbackHosts.includes(videoHost) &&
+      !externalFallbackHosts.includes(posterHost) &&
+      (!fallbackHost || !externalFallbackHosts.includes(fallbackHost));
+  }).length;
+  const audioMainlandReady = audioHosts.every((host) => !externalFallbackHosts.includes(host));
 
   return NextResponse.json({
     ok: true,
@@ -20,8 +36,10 @@ export function GET() {
     media_hosts: mediaHosts,
     fallback_media_hosts: fallbackMediaHosts,
     mainland_cdn_ready: fallbackMediaHosts.length === 0,
+    mainland_cdn_scene_count: mainlandReadySceneCount,
+    audio_mainland_ready: audioMainlandReady,
     origin_media_leak: mediaHosts.includes(originHost),
-    worker_origin_locked: true,
+    worker_origin_locked: Boolean(process.env.FOCUS_ROOM_WORKER_ORIGIN_CONFIRMED),
     backup_webhook_enabled: Boolean(process.env.FOCUS_ROOM_BACKUP_WEBHOOK_URL),
     timestamp: new Date().toISOString(),
   });

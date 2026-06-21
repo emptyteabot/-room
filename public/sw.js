@@ -1,5 +1,12 @@
-const cacheName = "focus-room-v5";
-const appShell = ["/focus-room", "/focus-room/offline.html", "/focus-room/manifest.webmanifest", "/focus-room/icon.svg"];
+const cacheName = "focus-room-v8";
+const appShell = [
+  "/focus-room",
+  "/focus-room/offline.html",
+  "/focus-room/manifest.webmanifest",
+  "/focus-room/icon.svg",
+  "/focus-room/audio/focus-complete.wav",
+  "/focus-room/audio/unlock-silence.wav",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(appShell)));

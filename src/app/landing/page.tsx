@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Bolt, Headphones, MonitorSmartphone, ShieldCheck, TimerReset, Wallpaper } from "lucide-react";
+import { focusScenes } from "@/lib/scenes";
+
+const sceneCount = focusScenes.length;
+const landingHeroVideo = process.env.NEXT_PUBLIC_LANDING_HERO_VIDEO ?? "https://videos.pexels.com/video-files/35206733/14915390_1440_2560_24fps.mp4";
+const landingHeroPoster = process.env.NEXT_PUBLIC_LANDING_HERO_POSTER ?? "https://images.pexels.com/videos/35206733/4k-footage-aurora-aurora-borealis-aurora-timelapse-35206733.jpeg?w=1260&h=750&dpr=1";
 
 const features = [
   {
@@ -13,8 +18,8 @@ const features = [
     icon: ShieldCheck,
   },
   {
-    title: "7 个沉浸场景",
-    description: "动态 1080p 自习室背景全部走外部 CDN，低成本承接高并发访问。",
+    title: `${sceneCount} 个沉浸场景`,
+    description: "电影级动态自然视频背景走外部 CDN，打开即用，持续扩充更多会动的放松自然场景。",
     icon: Wallpaper,
   },
 ];
@@ -25,8 +30,8 @@ export default function LandingPage() {
       <section className="relative min-h-dvh px-4 py-4 sm:px-6 lg:px-12">
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-42"
-          src="https://assets.mixkit.co/videos/43391/43391-1080.mp4"
-          poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1800&q=82"
+          src={landingHeroVideo}
+          poster={landingHeroPoster}
           autoPlay
           loop
           muted
@@ -35,7 +40,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_52%_38%,rgba(79,219,200,0.16),transparent_30%),linear-gradient(180deg,rgba(9,9,9,0.2),#090909_90%)]" />
         <nav className="relative z-10 mx-auto flex h-14 max-w-6xl items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 backdrop-blur-2xl">
           <Link className="text-lg font-semibold text-[#4fdbc8]" href="/landing">
-            专注一隅
+            vibe studying room
           </Link>
           <div className="hidden items-center gap-7 text-sm text-white/58 md:flex">
             <a className="transition hover:text-white" href="#features">
@@ -58,12 +63,12 @@ export default function LandingPage() {
         </nav>
         <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-5rem)] max-w-6xl items-center pt-10">
           <div className="max-w-3xl pb-20 pt-20">
-            <p className="mb-5 text-xs font-semibold tracking-[0.42em] text-[#4fdbc8]/78">FOCUS CORNER · WEB STUDY ROOM</p>
+            <p className="mb-5 text-xs font-semibold tracking-[0.42em] text-[#4fdbc8]/78">VIBE STUDYING · NATURE FOCUS ROOM</p>
             <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-normal text-white sm:text-6xl lg:text-7xl">
-              在城市的喧嚣中，为你预留一隅。
+              把电影级自然动态场景，变成你的专注背景。
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-white/66">
-              无需内测码、无需登录，打开网页即可进入沉浸式线上自习室。全屏动态场景、双路 Lofi 混音、精准番茄钟和 PWA 安装已经就绪。
+              无需内测码、无需登录，打开网页即可进入沉浸式自然专注空间。全屏动态视频背景、双路 Lofi 混音、精准番茄钟和 PWA 安装已经就绪。
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link
@@ -74,7 +79,7 @@ export default function LandingPage() {
                 <ArrowRight className="size-5" />
               </Link>
               <span className="rounded-2xl border border-white/10 bg-white/7 px-5 py-3 text-sm text-white/56 backdrop-blur-xl">
-                7 个场景 · 本地统计 · 裂变分享
+                {sceneCount} 个动态自然场景 · 本地统计 · 裂变分享
               </span>
             </div>
           </div>
@@ -141,8 +146,8 @@ export default function LandingPage() {
       </section>
       <footer className="border-t border-white/8 bg-black/30 px-4 py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-sm text-white/42 md:flex-row">
-          <span className="font-semibold text-white/70">专注一隅</span>
-          <span>零门槛沉浸式线上自习室</span>
+          <span className="font-semibold text-white/70">vibe studying room</span>
+          <span>电影级动态自然专注空间</span>
         </div>
       </footer>
     </main>
